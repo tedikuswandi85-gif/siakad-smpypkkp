@@ -777,7 +777,16 @@
                 <!-- Recap Period Filter Panel -->
                 <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
                     <h3 class="font-bold text-lg text-slate-900 mb-4">Laporan & Rekapitulasi Presensi</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Pilih Kelas</label>
+                            <select x-model="reportClass" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none">
+                                <option value="">-- Semua Kelas --</option>
+                                <template x-for="cl in getClassesList()" :key="cl">
+                                    <option :value="cl" x-text="cl"></option>
+                                </template>
+                            </select>
+                        </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tipe Rekapitulasi</label>
                             <select x-model="reportType" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none">
@@ -1133,6 +1142,7 @@
                 reportMonth: new Date().getMonth() + 1,
                 reportSemester: '1',
                 reportYear: '2026',
+                reportClass: '',
                 recapData: [],
                 recapTotals: { hadir: 0, izin: 0, sakit: 0, alpa: 0 },
                 trendDoughnutChart: null,
@@ -1605,22 +1615,33 @@
                     const tempRecap = [];
                     const totals = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
                     
-                    const targetStudents = this.students;
+                    // Filter siswa berdasarkan kelas yang dipilih di Rekap
+                    const targetStudents = this.reportClass 
+                        ? this.students.filter(s => s.className === this.reportClass) 
+                        : this.students;
                     
                     targetStudents.forEach(std => {
                         let filteredLogs = this.attendanceLog.filter(al => String(al.studentId) === String(std.id));
                         
-                        if (this.reportType === 'monthly') {
-                            filteredLogs = filteredLogs.filter(l => {
-                                const m = new Date(l.date).getMonth() + 1;
+                        filteredLogs = filteredLogs.filter(l => {
+                            if (!l.date) return false;
+                            const parts = l.date.split('-');
+                            if (parts.length < 3) return false;
+                            
+                            const y = parts[0];
+                            const m = parseInt(parts[1], 10);
+                            
+                            // Validasi Tahun Laporan
+                            if (y !== this.reportYear.toString()) return false;
+                            
+                            // Filter Bulanan / Semesteran
+                            if (this.reportType === 'monthly') {
                                 return m.toString() === this.reportMonth.toString();
-                            });
-                        } else if (this.reportType === 'semester') {
-                            filteredLogs = filteredLogs.filter(l => {
-                                const m = new Date(l.date).getMonth() + 1;
+                            } else if (this.reportType === 'semester') {
                                 return this.reportSemester === '1' ? (m >= 7 && m <= 12) : (m >= 1 && m <= 6);
-                            });
-                        }
+                            }
+                            return true; // Tahunan
+                        });
 
                         const counts = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
                         filteredLogs.forEach(l => {
@@ -1670,24 +1691,69 @@
                         });
                     }
 
-                    // Render Line Chart
+                    // Menghitung statistik tren kehadiran dinamis per-bulan berbasis logs
+                    const monthlyData = Array(12).fill(0);
+                    const monthlyCounts = Array(12).fill(0);
+                    
+                    this.attendanceLog.forEach(l => {
+                        if (!l.date) return;
+                        const parts = l.date.split('-');
+                        if (parts.length < 3) return;
+                        const y = parts[0];
+                        const m = parseInt(parts[1], 10) - 1; // 0 s.d 11
+                        
+                        // Cek penyaringan filter kelas rekap
+                        const std = this.students.find(s => String(s.id) === String(l.studentId));
+                        if (this.reportClass && (!std || std.className !== this.reportClass)) return;
+                        
+                        if (y === this.reportYear.toString()) {
+                            monthlyCounts[m]++;
+                            if (l.status === 'Hadir') {
+                                monthlyData[m]++;
+                            }
+                        }
+                    });
+                    
+                    const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                    const trendPercentages = [];
+                    
+                    for (let i = 0; i < 12; i++) {
+                        const total = monthlyCounts[i];
+                        // Gunakan nilai null jika tidak ada data log di bulan tersebut agar grafik tidak drop ke 0% secara keliru
+                        trendPercentages.push(total > 0 ? Math.round((monthlyData[i] / total) * 100) : null);
+                    }
+
+                    // Render Line Chart dengan tren riil
                     const ctxLine = document.getElementById('recapTrendLineChart');
                     if (ctxLine) {
                         if (this.trendLineChart) this.trendLineChart.destroy();
                         this.trendLineChart = new Chart(ctxLine, {
                             type: 'line',
                             data: {
-                                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                                labels: labels,
                                 datasets: [{
                                     label: 'Tingkat Kehadiran (%)',
-                                    data: [92, 94, 88, 95, 93, 90],
+                                    data: trendPercentages,
                                     borderColor: '#4f46e5',
                                     backgroundColor: 'rgba(79, 70, 229, 0.15)',
                                     tension: 0.3,
-                                    fill: true
+                                    fill: true,
+                                    spanGaps: true // Menghubungkan titik bulan kosong dengan elegan
                                 }]
                             },
-                            options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } }
+                            options: { 
+                                responsive: true, 
+                                maintainAspectRatio: false, 
+                                scales: { 
+                                    y: { 
+                                        min: 0, 
+                                        max: 100,
+                                        ticks: {
+                                            callback: function(value) { return value + '%'; }
+                                        }
+                                    } 
+                                } 
+                            }
                         });
                     }
                 },
