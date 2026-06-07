@@ -1258,7 +1258,7 @@
 
                 handleLogin() {
                     if (this.loginForm.role === 'admin') {
-                        if (this.loginForm.pin === ADMIN_PIN) {
+                        if (String(this.loginForm.pin) === String(ADMIN_PIN)) {
                             this.isLoggedIn = true;
                             this.role = 'admin';
                             this.currentUser = { name: 'Super Admin' };
@@ -1267,8 +1267,8 @@
                             this.showToast('PIN Admin Salah!', 'error');
                         }
                     } else if (this.loginForm.role === 'teacher') {
-                        const match = this.teachers.find(t => t.id === this.loginForm.selectedId);
-                        if (match && match.pin === this.loginForm.pin) {
+                        const match = this.teachers.find(t => String(t.id) === String(this.loginForm.selectedId));
+                        if (match && String(match.pin) === String(this.loginForm.pin)) {
                             this.isLoggedIn = true;
                             this.role = 'teacher';
                             this.currentUser = match;
@@ -1277,8 +1277,8 @@
                             this.showToast('PIN Guru salah atau Anda belum memilih guru!', 'error');
                         }
                     } else if (this.loginForm.role === 'student') {
-                        const match = this.students.find(s => s.id === this.loginForm.selectedId);
-                        if (match && match.pin === this.loginForm.pin) {
+                        const match = this.students.find(s => String(s.id) === String(this.loginForm.selectedId));
+                        if (match && String(match.pin) === String(this.loginForm.pin)) {
                             this.isLoggedIn = true;
                             this.role = 'student';
                             this.currentUser = match;
@@ -1325,7 +1325,7 @@
 
                 getStudentIndividualStats() {
                     if (!this.currentUser) return { hadir: 0, izin: 0, sakit: 0, alpa: 0, persentase: 0 };
-                    const myLogs = this.attendanceLog.filter(l => l.studentId === this.currentUser.id);
+                    const myLogs = this.attendanceLog.filter(l => String(l.studentId) === String(this.currentUser.id));
                     const totals = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
                     myLogs.forEach(l => {
                         if (l.status === 'Hadir') totals.hadir++;
@@ -1367,7 +1367,7 @@
                 },
 
                 handleScannedStudent(studentId) {
-                    const match = this.students.find(s => s.id === studentId.trim());
+                    const match = this.students.find(s => String(s.id) === String(studentId).trim());
                     if (match) {
                         if (match.className !== this.activeClass) {
                             this.showToast(`Siswa ${match.name} bukan dari kelas ${this.activeClass}!`, 'error');
@@ -1410,7 +1410,7 @@
                         };
                         
                         // Cari apakah log dengan tgl, siswa & mapel tsb sudah ada (Update)
-                        const existsIndex = this.attendanceLog.findIndex(al => al.date === dateVal && al.studentId === std.id && al.subject === this.activeSubject);
+                        const existsIndex = this.attendanceLog.findIndex(al => al.date === dateVal && String(al.studentId) === String(std.id) && al.subject === this.activeSubject);
                         if (existsIndex !== -1) {
                             this.attendanceLog[existsIndex] = log;
                         } else {
@@ -1432,7 +1432,7 @@
                     const dateVal = document.getElementById('attendance-date') ? document.getElementById('attendance-date').value : '2026-06-07';
                     const todayLogs = this.attendanceLog.filter(al => al.date === dateVal);
                     return todayLogs.map(l => {
-                        const std = this.students.find(s => s.id === l.studentId);
+                        const std = this.students.find(s => String(s.id) === String(l.studentId));
                         return {
                             id: l.id,
                             studentId: l.studentId,
@@ -1469,7 +1469,7 @@
                 async sendWAAutoBackground(logs) {
                     this.showToast('Memulai broadcast WhatsApp otomatis...', 'info');
                     for (let l of logs) {
-                        const std = this.students.find(s => s.id === l.studentId);
+                        const std = this.students.find(s => String(s.id) === String(l.studentId));
                         if (std) {
                             const payloadLog = {
                                 date: l.date,
@@ -1518,7 +1518,7 @@
                     const targetStudents = this.students;
                     
                     targetStudents.forEach(std => {
-                        let filteredLogs = this.attendanceLog.filter(al => al.studentId === std.id);
+                        let filteredLogs = this.attendanceLog.filter(al => String(al.studentId) === String(std.id));
                         
                         if (this.reportType === 'monthly') {
                             filteredLogs = filteredLogs.filter(l => {
@@ -1675,7 +1675,7 @@
 
                 async saveStudent() {
                     if (this.isEditMode) {
-                        const idx = this.students.findIndex(s => s.id === this.studentForm.id);
+                        const idx = this.students.findIndex(s => String(s.id) === String(this.studentForm.id));
                         if (idx !== -1) this.students[idx] = { ...this.studentForm };
                     } else {
                         this.students.push({ ...this.studentForm });
@@ -1686,7 +1686,7 @@
                 },
 
                 deleteStudent(id) {
-                    this.students = this.students.filter(s => s.id !== id);
+                    this.students = this.students.filter(s => String(s.id) !== String(id));
                     this.showToast('Siswa berhasil dihapus!', 'info');
                 },
 
@@ -1704,7 +1704,7 @@
 
                 async saveTeacher() {
                     if (this.isEditMode) {
-                        const idx = this.teachers.findIndex(t => t.id === this.teacherForm.id);
+                        const idx = this.teachers.findIndex(t => String(t.id) === String(this.teacherForm.id));
                         if (idx !== -1) this.teachers[idx] = { ...this.teacherForm };
                     } else {
                         this.teachers.push({ ...this.teacherForm });
@@ -1715,7 +1715,7 @@
                 },
 
                 deleteTeacher(id) {
-                    this.teachers = this.teachers.filter(t => t.id !== id);
+                    this.teachers = this.teachers.filter(t => String(t.id) !== String(id));
                     this.showToast('Guru berhasil didelete dari pendaftaran!', 'info');
                 },
 
