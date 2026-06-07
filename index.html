@@ -7,14 +7,14 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Inter Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- HTML5-QRCode Scanner -->
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <!-- AlpineJS (Deferred for performance) -->
+    <!-- AlpineJS -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
@@ -26,11 +26,21 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen pb-16 md:pb-0" x-data="siakadApp()" x-init="init()" x-cloak>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-16 md:pb-0" x-data="siakadApp()" x-init="init()">
+
+    <!-- INITIAL LOADING SKELETON (Prevents white flash or blank screen on slow networks) -->
+    <div id="initial-loading" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-indigo-950 text-white transition-opacity duration-300">
+        <div class="relative flex flex-col items-center">
+            <div class="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+            <i class="fas fa-graduation-cap text-3xl absolute top-4 text-indigo-300"></i>
+            <h2 class="text-xl font-bold tracking-wider">SIAKAD PRO</h2>
+            <p class="text-xs text-indigo-300 mt-1">Menyiapkan Database Google Sheets...</p>
+        </div>
+    </div>
 
     <!-- LOGIN SCREEN -->
-    <div x-show="!isLoggedIn" class="min-h-screen flex items-center justify-center bg-gradient-to-tr from-indigo-900 via-indigo-800 to-slate-950 p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 border border-white/10 relative overflow-hidden">
+    <div x-show="!isLoggedIn" class="min-h-screen flex items-center justify-center bg-gradient-to-tr from-indigo-900 via-indigo-800 to-slate-950 p-4" x-cloak>
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 border border-white/10 relative overflow-hidden">
             <div class="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-2xl"></div>
             
             <div class="text-center mb-8">
@@ -38,7 +48,7 @@
                     <i class="fas fa-graduation-cap text-3xl"></i>
                 </div>
                 <h1 class="text-2xl font-bold text-slate-900 tracking-tight">SIAKAD PRO</h1>
-                <p class="text-slate-500 text-sm mt-1">Sistem Informasi Akademik & Kehadiran Sekolah</p>
+                <p class="text-slate-500 text-xs mt-1">Sistem Informasi Akademik & Kehadiran Sekolah</p>
             </div>
 
             <!-- Login Form -->
@@ -46,9 +56,9 @@
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Tipe Akun / Hak Akses</label>
                     <div class="grid grid-cols-3 gap-2">
-                        <button type="button" @click="loginForm.role = 'student'" :class="loginForm.role === 'student' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="py-2.5 px-3 rounded-xl font-medium text-xs transition duration-200">Siswa</button>
-                        <button type="button" @click="loginForm.role = 'teacher'" :class="loginForm.role === 'teacher' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="py-2.5 px-3 rounded-xl font-medium text-xs transition duration-200">Guru</button>
-                        <button type="button" @click="loginForm.role = 'admin'" :class="loginForm.role === 'admin' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="py-2.5 px-3 rounded-xl font-medium text-xs transition duration-200">Admin</button>
+                        <button type="button" @click="loginForm.role = 'student'" :class="loginForm.role === 'student' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="py-2.5 px-3 rounded-xl font-bold text-xs transition duration-200">Siswa</button>
+                        <button type="button" @click="loginForm.role = 'teacher'" :class="loginForm.role === 'teacher' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="py-2.5 px-3 rounded-xl font-bold text-xs transition duration-200">Guru</button>
+                        <button type="button" @click="loginForm.role = 'admin'" :class="loginForm.role === 'admin' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="py-2.5 px-3 rounded-xl font-bold text-xs transition duration-200">Admin</button>
                     </div>
                 </div>
 
@@ -85,7 +95,7 @@
                 </div>
 
                 <!-- Login Button -->
-                <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-lg shadow-indigo-600/20 transition-all duration-200 active:scale-95 flex items-center justify-center space-x-2">
+                <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-600/20 transition-all duration-200 active:scale-95 flex items-center justify-center space-x-2">
                     <i class="fas fa-sign-in-alt"></i>
                     <span>Masuk ke Sistem</span>
                 </button>
@@ -94,16 +104,16 @@
     </div>
 
     <!-- APP MAIN INTERFACE (Logged In) -->
-    <div x-show="isLoggedIn" class="min-h-screen flex flex-col">
+    <div x-show="isLoggedIn" class="min-h-screen flex flex-col" x-cloak>
         <!-- Top Header Navigation -->
         <header class="bg-indigo-900 text-white sticky top-0 z-40 shadow-md">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-center md:justify-between flex-wrap gap-4">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between flex-wrap gap-4">
                 <div class="flex items-center space-x-3">
                     <div class="p-2 bg-white/10 rounded-xl">
                         <i class="fas fa-graduation-cap text-2xl text-indigo-200"></i>
                     </div>
                     <div>
-                        <span class="text-xs uppercase tracking-widest text-indigo-200 font-bold">SIAKAD PRO v2.0</span>
+                        <span class="text-xs uppercase tracking-widest text-indigo-200 font-bold">SIAKAD PRO v2.5</span>
                         <h2 class="text-lg font-bold leading-tight tracking-tight text-white">Database Google Sheets</h2>
                     </div>
                 </div>
@@ -111,7 +121,7 @@
                 <!-- Status & User Profile Actions -->
                 <div class="flex items-center space-x-3">
                     <!-- Status Indicator Connection -->
-                    <div class="flex items-center px-3 py-1.5 rounded-full text-xs font-semibold" :class="isSynced ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20' : 'bg-amber-500/15 text-amber-300 border border-amber-500/20'">
+                    <div class="flex items-center px-3 py-1.5 rounded-full text-xs font-bold" :class="isSynced ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20' : 'bg-amber-500/15 text-amber-300 border border-amber-500/20'">
                         <span class="w-2 h-2 rounded-full mr-2" :class="isSynced ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400 animate-pulse'"></span>
                         <span x-text="isSynced ? 'Connected to GSheets' : 'Sandbox (Offline DB)'"></span>
                     </div>
@@ -124,8 +134,8 @@
                     <!-- Profile Info -->
                     <div class="bg-indigo-950/60 border border-indigo-700 px-3.5 py-1.5 rounded-xl flex items-center space-x-2 text-xs">
                         <i class="fas fa-user-circle text-indigo-300 text-sm"></i>
-                        <span class="font-semibold text-white" x-text="currentUser ? currentUser.name : 'Administrator'"></span>
-                        <span class="bg-indigo-700 text-indigo-200 px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider" x-text="role"></span>
+                        <span class="font-bold text-white" x-text="currentUser ? currentUser.name : 'Administrator'"></span>
+                        <span class="bg-indigo-700 text-indigo-200 px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider font-extrabold" x-text="role"></span>
                     </div>
 
                     <!-- Log Out -->
@@ -137,68 +147,66 @@
         </header>
 
         <!-- Dynamic Warnings -->
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 w-full">
-            <template x-if="isSandboxPreview">
-                <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm">
-                    <div class="flex">
-                        <div class="flex-shrink-0 text-amber-500">
-                            <i class="fas fa-exclamation-triangle text-xl"></i>
-                        </div>
-                        <div class="ml-3">
-                            <h3 class="text-sm font-semibold text-amber-800">Mode Sandbox Simulator Aktif (Database Luring)</h3>
-                            <p class="text-xs text-amber-700 mt-1">
-                                Peramban mendeteksi aplikasi sedang berjalan di dalam simulator terisolasi (*Sandboxed IFrame*). Karena aturan keamanan CORS Google, sinkronisasi langsung ke Google Sheets dibatasi di layar pratinjau ini.
-                            </p>
-                            <p class="text-xs text-amber-800 font-medium mt-2">
-                                <i class="fas fa-check-circle text-emerald-600 mr-1"></i> <strong>Jangan khawatir!</strong> Kode Anda sudah 100% benar. Jika Anda men-deploy file HTML ini ke layanan seperti Netlify/GitHub Pages atau membukanya langsung di HP/Laptop secara mandiri, data Anda akan langsung terhubung dan sinkron secara real-time ke Google Spreadsheet Anda!
-                            </p>
-                        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 w-full" x-show="isSandboxPreview">
+            <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm">
+                <div class="flex">
+                    <div class="flex-shrink-0 text-amber-500">
+                        <i class="fas fa-exclamation-triangle text-xl"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-bold text-amber-800">Mode Sandbox Simulator Aktif (Database Luring)</h3>
+                        <p class="text-xs text-amber-700 mt-1">
+                            Peramban mendeteksi aplikasi sedang berjalan di dalam simulator terisolasi (*Sandboxed IFrame*). Karena aturan keamanan CORS Google, sinkronisasi langsung ke Google Sheets dibatasi di layar pratinjau ini.
+                        </p>
+                        <p class="text-xs text-amber-800 font-medium mt-2">
+                            <i class="fas fa-check-circle text-emerald-600 mr-1"></i> <strong>Jangan khawatir!</strong> Kode Anda sudah 100% benar. Jika Anda men-deploy file HTML ini ke layanan seperti Netlify/GitHub Pages atau membukanya langsung di HP/Laptop secara mandiri, data Anda akan langsung terhubung dan sinkron secara real-time ke Google Spreadsheet Anda!
+                        </p>
                     </div>
                 </div>
-            </template>
+            </div>
         </div>
 
         <!-- Tab Navigation Menu Desktop -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 w-full">
             <nav class="hidden md:flex space-x-1.5 bg-slate-200/60 p-1.5 rounded-2xl border border-slate-200">
                 <!-- Dashboard Tab (Accessible to everyone) -->
-                <button @click="currentTab = 'dashboard'" :class="currentTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                <button @click="currentTab = 'dashboard'" :class="currentTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition duration-200">
                     <i class="fas fa-th-large"></i>
                     <span>Dashboard</span>
                 </button>
 
                 <!-- Absensi Tab (Accessible to admin and teacher) -->
-                <button x-show="role === 'admin' || role === 'teacher'" @click="currentTab = 'attendance'" :class="currentTab === 'attendance' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                <button x-show="role === 'admin' || role === 'teacher'" @click="currentTab = 'attendance'" :class="currentTab === 'attendance' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition duration-200">
                     <i class="fas fa-calendar-check"></i>
                     <span>Input Absensi</span>
                 </button>
 
                 <!-- Jurnal Tab (Accessible to admin, teacher, student: student read-only) -->
-                <button @click="currentTab = 'jurnal'" :class="currentTab === 'jurnal' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                <button @click="currentTab = 'jurnal'" :class="currentTab === 'jurnal' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition duration-200">
                     <i class="fas fa-book"></i>
                     <span>Jurnal Belajar</span>
                 </button>
 
                 <!-- Students Tab (Accessible to admin) -->
-                <button x-show="role === 'admin'" @click="currentTab = 'students'" :class="currentTab === 'students' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                <button x-show="role === 'admin'" @click="currentTab = 'students'" :class="currentTab === 'students' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition duration-200">
                     <i class="fas fa-user-friends"></i>
                     <span>Data Siswa</span>
                 </button>
 
                 <!-- Teachers Tab (Accessible to admin) -->
-                <button x-show="role === 'admin'" @click="currentTab = 'teachers'" :class="currentTab === 'teachers' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                <button x-show="role === 'admin'" @click="currentTab = 'teachers'" :class="currentTab === 'teachers' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition duration-200">
                     <i class="fas fa-user-tie"></i>
                     <span>Data Guru</span>
                 </button>
 
                 <!-- WA Center (Accessible to admin and teacher) -->
-                <button x-show="role === 'admin' || role === 'teacher'" @click="currentTab = 'wanotif'" :class="currentTab === 'wanotif' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                <button x-show="role === 'admin' || role === 'teacher'" @click="currentTab = 'wanotif'" :class="currentTab === 'wanotif' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition duration-200">
                     <i class="fab fa-whatsapp"></i>
                     <span>WA Center & HP</span>
                 </button>
 
                 <!-- Rekap & Grafis (Accessible to all) -->
-                <button @click="currentTab = 'rekap'" :class="currentTab === 'rekap' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                <button @click="currentTab = 'rekap'" :class="currentTab === 'rekap' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition duration-200">
                     <i class="fas fa-chart-pie"></i>
                     <span>Rekap & Grafik</span>
                 </button>
@@ -229,34 +237,33 @@
                     <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
                         <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl"><i class="fas fa-user-graduate text-xl"></i></div>
                         <div>
-                            <span class="text-slate-400 text-xs font-semibold uppercase">Total Siswa</span>
+                            <span class="text-slate-400 text-xs font-bold uppercase">Total Siswa</span>
                             <h3 class="text-2xl font-bold mt-0.5" x-text="students.length">0</h3>
                         </div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
                         <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><i class="fas fa-chalkboard-teacher text-xl"></i></div>
                         <div>
-                            <span class="text-slate-400 text-xs font-semibold uppercase">Total Guru</span>
+                            <span class="text-slate-400 text-xs font-bold uppercase">Total Guru</span>
                             <h3 class="text-2xl font-bold mt-0.5" x-text="teachers.length">0</h3>
                         </div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
                         <div class="p-3 bg-cyan-50 text-cyan-600 rounded-xl"><i class="fas fa-calendar-check text-xl"></i></div>
                         <div>
-                            <span class="text-slate-400 text-xs font-semibold uppercase">Log Absensi</span>
+                            <span class="text-slate-400 text-xs font-bold uppercase">Log Absensi</span>
                             <h3 class="text-2xl font-bold mt-0.5" x-text="attendanceLog.length">0</h3>
                         </div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
                         <div class="p-3 bg-amber-50 text-amber-600 rounded-xl"><i class="fas fa-book-open text-xl"></i></div>
                         <div>
-                            <span class="text-slate-400 text-xs font-semibold uppercase">Jurnal Kelas</span>
+                            <span class="text-slate-400 text-xs font-bold uppercase">Jurnal Kelas</span>
                             <h3 class="text-2xl font-bold mt-0.5" x-text="journals.length">0</h3>
                         </div>
                     </div>
                 </div>
 
-                <!-- Role Specific Dashboards -->
                 <!-- Student Portal Dashboard View -->
                 <template x-if="role === 'student'">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -285,7 +292,7 @@
                                 </div>
                             </div>
                             <div class="bg-indigo-50 p-4 rounded-xl text-center">
-                                <span class="text-xs text-indigo-700 font-medium">Persentase Kehadiran:</span>
+                                <span class="text-xs text-indigo-700 font-bold">Persentase Kehadiran:</span>
                                 <span class="block text-2xl font-extrabold text-indigo-800" x-text="getStudentIndividualStats().persentase + '%'">0%</span>
                             </div>
                         </div>
@@ -297,8 +304,8 @@
                                 <template x-for="jr in getStudentJournals()" :key="jr.id">
                                     <div class="bg-slate-50 hover:bg-slate-100/70 p-4 rounded-xl border border-slate-100 transition duration-150">
                                         <div class="flex items-center justify-between mb-2">
-                                            <span class="text-xs font-semibold text-indigo-600" x-text="jr.subject"></span>
-                                            <span class="text-[10px] text-slate-400" x-text="`${jr.date} - ${jr.time}`"></span>
+                                            <span class="text-xs font-bold text-indigo-600" x-text="jr.subject"></span>
+                                            <span class="text-[10px] text-slate-400 font-bold" x-text="`${jr.date} - ${jr.time}`"></span>
                                         </div>
                                         <h4 class="font-bold text-slate-800 text-sm" x-text="jr.topic"></h4>
                                         <p class="text-xs text-slate-600 mt-1" x-text="jr.summary"></p>
@@ -362,7 +369,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Tanggal Absen</label>
-                            <input type="date" id="attendance-date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" value="2026-06-07">
+                            <input type="date" id="attendance-date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
                         </div>
                     </div>
 
@@ -396,15 +403,15 @@
                                 <tbody class="divide-y divide-slate-50 text-sm text-slate-700">
                                     <template x-for="std in getActiveStudentsList()" :key="std.id">
                                         <tr class="hover:bg-slate-50/50 transition">
-                                            <td class="py-4 px-6 font-semibold text-slate-500" x-text="'# ' + std.id"></td>
-                                            <td class="py-4 px-6 font-bold text-slate-900" x-text="std.name"></td>
+                                            <td class="py-4 px-6 font-bold text-slate-500" x-text="'# ' + std.id"></td>
+                                            <td class="py-4 px-6 font-extrabold text-slate-900" x-text="std.name"></td>
                                             <td class="py-4 px-6">
                                                 <div class="flex items-center justify-center space-x-1.5 max-w-xs mx-auto">
                                                     <!-- Status Buttons (H, I, S, A) -->
-                                                    <button @click="tempAttendance[std.id] = 'Hadir'" :class="tempAttendance[std.id] === 'Hadir' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition">H</button>
-                                                    <button @click="tempAttendance[std.id] = 'Izin'" :class="tempAttendance[std.id] === 'Izin' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition">I</button>
-                                                    <button @click="tempAttendance[std.id] = 'Sakit'" :class="tempAttendance[std.id] === 'Sakit' ? 'bg-cyan-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition">S</button>
-                                                    <button @click="tempAttendance[std.id] = 'Alpa'" :class="tempAttendance[std.id] === 'Alpa' ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition">A</button>
+                                                    <button @click="tempAttendance[std.id] = 'Hadir'" :class="tempAttendance[std.id] === 'Hadir' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition">H</button>
+                                                    <button @click="tempAttendance[std.id] = 'Izin'" :class="tempAttendance[std.id] === 'Izin' ? 'bg-amber-500 text-white shadow-md shadow-amber-500/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition">I</button>
+                                                    <button @click="tempAttendance[std.id] = 'Sakit'" :class="tempAttendance[std.id] === 'Sakit' ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition">S</button>
+                                                    <button @click="tempAttendance[std.id] = 'Alpa'" :class="tempAttendance[std.id] === 'Alpa' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition">A</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -415,7 +422,7 @@
 
                         <!-- Save and Broadcast Options -->
                         <div class="flex flex-col sm:flex-row justify-between items-center pt-4 gap-4">
-                            <span class="text-xs text-slate-400 font-semibold uppercase"><i class="fas fa-check-circle text-indigo-500 mr-1.5"></i> Seluruh status absen siap disimpan</span>
+                            <span class="text-xs text-slate-400 font-bold uppercase"><i class="fas fa-check-circle text-indigo-500 mr-1.5"></i> Seluruh status absen siap disimpan</span>
                             <button @click="saveAttendanceLogs()" class="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-md transition">
                                 Simpan Kehadiran & Sinkronisasi WA
                             </button>
@@ -427,7 +434,7 @@
                         <div class="text-center py-16 text-slate-400">
                             <i class="fas fa-calendar-alt text-4xl mb-3 text-slate-300"></i>
                             <h4 class="font-bold text-slate-600">Pilih Kelas & Mapel Terlebih Dahulu</h4>
-                            <p class="text-xs text-slate-400 mt-1">Harap sesuaikan pilihan menu di atas untuk menampilkan siswa</p>
+                            <p class="text-xs text-slate-400 mt-1">Harap sesuaikan pilihan menu di atas untuk menampilkan daftar nama siswa</p>
                         </div>
                     </template>
                 </div>
@@ -483,8 +490,8 @@
                         <template x-for="jr in journals" :key="jr.id">
                             <div class="border border-slate-100 hover:border-indigo-200 p-5 rounded-2xl bg-slate-50/50 hover:bg-slate-50 relative group transition-all duration-150">
                                 <div class="flex items-center justify-between mb-3">
-                                    <span class="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-semibold" x-text="`${jr.className} - ${jr.subject}`"></span>
-                                    <span class="text-[10px] text-slate-400 font-medium" x-text="`${jr.date} | ${jr.time}`"></span>
+                                    <span class="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-bold" x-text="`${jr.className} - ${jr.subject}`"></span>
+                                    <span class="text-[10px] text-slate-400 font-bold" x-text="`${jr.date} | ${jr.time}`"></span>
                                 </div>
                                 <h4 class="font-bold text-slate-900 text-base mb-1.5" x-text="jr.topic"></h4>
                                 <p class="text-xs text-slate-600 leading-relaxed mb-4" x-text="jr.summary"></p>
@@ -492,14 +499,14 @@
                                 <template x-if="jr.homework">
                                     <div class="bg-amber-50/70 p-3 rounded-xl border border-amber-100 mb-3 text-xs">
                                         <span class="font-bold text-amber-800 uppercase tracking-wider text-[9px] block mb-1">Tugas / PR</span>
-                                        <p class="text-slate-700" x-text="jr.homework"></p>
+                                        <p class="text-slate-700 font-medium" x-text="jr.homework"></p>
                                     </div>
                                 </template>
 
                                 <div class="flex justify-between items-center pt-3 border-t border-slate-100 text-xs">
-                                    <span class="text-slate-400 font-medium" x-text="`Guru: ${jr.teacher || 'Pengajar'}`"></span>
+                                    <span class="text-slate-400 font-bold" x-text="`Guru: ${jr.teacher || 'Pengajar'}`"></span>
                                     <button @click="shareJournalToParents(jr)" class="text-emerald-600 hover:text-emerald-700 font-bold flex items-center space-x-1 transition">
-                                        <i class="fab fa-whatsapp"></i>
+                                        <i class="fab fa-whatsapp text-sm"></i>
                                         <span>Bagikan Jurnal</span>
                                     </button>
                                 </div>
@@ -561,18 +568,18 @@
                                     <th class="py-4 px-6 text-center">Aksi Operasi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-50 text-slate-700 font-medium">
+                            <tbody class="divide-y divide-slate-50 text-slate-700 font-bold">
                                 <template x-for="std in students" :key="std.id">
                                     <tr class="hover:bg-slate-50/30 transition">
-                                        <td class="py-4 px-6 font-semibold text-slate-500" x-text="'# ' + std.id"></td>
-                                        <td class="py-4 px-6 font-bold text-slate-900" x-text="std.name"></td>
-                                        <td class="py-4 px-6" x-text="std.className"></td>
-                                        <td class="py-4 px-6">
-                                            <div class="text-slate-800" x-text="std.parentName"></div>
+                                        <td class="py-4 px-6 font-bold text-slate-500" x-text="'# ' + std.id"></td>
+                                        <td class="py-4 px-6 font-extrabold text-slate-900" x-text="std.name"></td>
+                                        <td class="py-4 px-6 font-bold" x-text="std.className"></td>
+                                        <td class="py-4 px-6 font-medium">
+                                            <div class="text-slate-800 font-bold" x-text="std.parentName"></div>
                                             <div class="text-[10px] text-slate-400" x-text="std.parentPhone"></div>
                                         </td>
                                         <td class="py-4 px-6">
-                                            <span class="bg-slate-100 px-2 py-1 rounded text-xs font-mono font-bold" x-text="std.pin"></span>
+                                            <span class="bg-slate-100 px-2 py-1 rounded text-xs font-mono font-bold text-indigo-700" x-text="std.pin"></span>
                                         </td>
                                         <td class="py-4 px-6">
                                             <div class="flex items-center justify-center space-x-1">
@@ -618,28 +625,28 @@
                                     <th class="py-4 px-6 text-center">Aksi Operasi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-50 text-slate-700 font-medium">
+                            <tbody class="divide-y divide-slate-50 text-slate-700 font-bold">
                                 <template x-for="tchr in teachers" :key="tchr.id">
                                     <tr class="hover:bg-slate-50/30 transition">
-                                        <td class="py-4 px-6 font-semibold text-slate-500" x-text="'# ' + tchr.id"></td>
-                                        <td class="py-4 px-6 font-bold text-slate-900" x-text="tchr.name"></td>
-                                        <td class="py-4 px-6" x-text="tchr.nip || '-'"></td>
+                                        <td class="py-4 px-6 font-bold text-slate-500" x-text="'# ' + tchr.id"></td>
+                                        <td class="py-4 px-6 font-extrabold text-slate-900" x-text="tchr.name"></td>
+                                        <td class="py-4 px-6 font-medium text-slate-500" x-text="tchr.nip || '-'"></td>
                                         <td class="py-4 px-6">
                                             <div class="flex flex-wrap gap-1 max-w-[150px]">
                                                 <template x-for="cl in tchr.classes" :key="cl">
-                                                    <span class="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded" x-text="cl"></span>
+                                                    <span class="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-bold" x-text="cl"></span>
                                                 </template>
                                             </div>
                                         </td>
                                         <td class="py-4 px-6">
                                             <div class="flex flex-wrap gap-1 max-w-[150px]">
                                                 <template x-for="sb in tchr.subjects" :key="sb">
-                                                    <span class="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded" x-text="sb"></span>
+                                                    <span class="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold" x-text="sb"></span>
                                                 </template>
                                             </div>
                                         </td>
                                         <td class="py-4 px-6">
-                                            <span class="bg-slate-100 px-2 py-1 rounded text-xs font-mono font-bold" x-text="tchr.pin"></span>
+                                            <span class="bg-slate-100 px-2 py-1 rounded text-xs font-mono font-bold text-indigo-700" x-text="tchr.pin"></span>
                                         </td>
                                         <td class="py-4 px-6 text-center">
                                             <div class="flex items-center justify-center space-x-1">
@@ -666,7 +673,7 @@
                                 <div class="flex items-center justify-between pb-3 border-b border-slate-100">
                                     <div>
                                         <span class="font-bold text-slate-700 text-sm">Status Pengiriman Otomatis</span>
-                                        <p class="text-[11px] text-slate-400 mt-0.5">Kirim notifikasi di background pasca klik "Simpan Absen"</p>
+                                        <p class="text-[11px] text-slate-400 mt-0.5 font-bold">Kirim notifikasi di background pasca klik "Simpan Absen"</p>
                                     </div>
                                     <label class="relative inline-flex items-center cursor-pointer">
                                         <input type="checkbox" x-model="waSettings.autoSend" @change="saveWASettings()" class="sr-only peer">
@@ -700,7 +707,7 @@
                                                 <span class="text-xs font-bold text-slate-800" x-text="log.name"></span>
                                                 <span class="text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider" x-text="log.status"></span>
                                             </div>
-                                            <p class="text-xs text-slate-500 line-clamp-2" x-text="generateWAMessage(log)"></p>
+                                            <p class="text-xs text-slate-500 line-clamp-2 font-medium" x-text="generateWAMessage(log)"></p>
                                         </div>
                                         <div class="flex space-x-1.5 self-end md:self-auto">
                                             <button @click="simulateHPMini(log)" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition">Pratinjau</button>
@@ -742,12 +749,11 @@
 
                         <!-- Chat Area Screen Simulation -->
                         <div class="flex-1 bg-gradient-to-b from-[#efeae2] to-[#e5ddd5] p-4 overflow-y-auto space-y-4 no-scrollbar relative flex flex-col justify-end">
-                            <!-- Background pattern placeholder -->
                             <div class="absolute inset-0 bg-[radial-gradient(#c5bba8_1px,transparent_1px)] [background-size:16px_16px] opacity-15 pointer-events-none"></div>
                             
                             <!-- Inside Chat Messages -->
                             <div class="bg-white p-3.5 rounded-xl rounded-tl-none shadow-sm max-w-[85%] relative z-10 self-start">
-                                <p class="text-xs text-slate-800 leading-relaxed font-sans" x-text="activeSimulatedMessage || 'Silakan pilih pesan pratinjau atau lakukan absen untuk melihat visualisasi chat di sini...'"></p>
+                                <p class="text-xs text-slate-800 leading-relaxed font-sans font-medium" x-text="activeSimulatedMessage || 'Silakan pilih pesan pratinjau atau lakukan absen untuk melihat visualisasi chat di sini...'"></p>
                                 <span class="block text-right text-[8px] text-slate-400 mt-1">12:30 PM <i class="fas fa-check text-indigo-500 font-bold"></i></span>
                             </div>
                         </div>
@@ -825,11 +831,11 @@
                         <div class="relative w-48 h-48 mx-auto my-4 flex items-center justify-center">
                             <canvas id="recapDoughnutChart"></canvas>
                         </div>
-                        <div class="space-y-2 mt-4 text-xs font-semibold text-slate-600">
-                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-2"></span> Hadir</span> <span x-text="recapTotals.hadir">0</span></div>
-                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-amber-500 mr-2"></span> Izin</span> <span x-text="recapTotals.izin">0</span></div>
-                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-cyan-500 mr-2"></span> Sakit</span> <span x-text="recapTotals.sakit">0</span></div>
-                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-rose-500 mr-2"></span> Alpa</span> <span x-text="recapTotals.alpa">0</span></div>
+                        <div class="space-y-2 mt-4 text-xs font-bold text-slate-600">
+                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-2"></span> Hadir</span> <span class="font-extrabold" x-text="recapTotals.hadir">0</span></div>
+                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-amber-500 mr-2"></span> Izin</span> <span class="font-extrabold" x-text="recapTotals.izin">0</span></div>
+                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-cyan-500 mr-2"></span> Sakit</span> <span class="font-extrabold" x-text="recapTotals.sakit">0</span></div>
+                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-rose-500 mr-2"></span> Alpa</span> <span class="font-extrabold" x-text="recapTotals.alpa">0</span></div>
                         </div>
                     </div>
 
@@ -862,16 +868,16 @@
                                     <th class="py-4 px-6 text-center">Persentase</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-50 text-slate-700 font-medium">
+                            <tbody class="divide-y divide-slate-50 text-slate-700 font-bold">
                                 <template x-for="item in recapData" :key="item.id">
                                     <tr class="hover:bg-slate-50/20 transition">
                                         <td class="py-4 px-6 text-slate-500" x-text="'#' + item.id"></td>
-                                        <td class="py-4 px-6 font-bold text-slate-950" x-text="item.name"></td>
+                                        <td class="py-4 px-6 font-extrabold text-slate-950" x-text="item.name"></td>
                                         <td class="py-4 px-6" x-text="item.className"></td>
-                                        <td class="py-4 px-6 text-center text-emerald-600 font-bold" x-text="item.hadir"></td>
-                                        <td class="py-4 px-6 text-center text-amber-600 font-bold" x-text="item.izin"></td>
-                                        <td class="py-4 px-6 text-center text-cyan-600 font-bold" x-text="item.sakit"></td>
-                                        <td class="py-4 px-6 text-center text-rose-600 font-bold" x-text="item.alpa"></td>
+                                        <td class="py-4 px-6 text-center text-emerald-600 font-extrabold" x-text="item.hadir"></td>
+                                        <td class="py-4 px-6 text-center text-amber-600 font-extrabold" x-text="item.izin"></td>
+                                        <td class="py-4 px-6 text-center text-cyan-600 font-extrabold" x-text="item.sakit"></td>
+                                        <td class="py-4 px-6 text-center text-rose-600 font-extrabold" x-text="item.alpa"></td>
                                         <td class="py-4 px-6 text-center">
                                             <span class="px-2 py-1 rounded font-bold" :class="item.percentage >= 85 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'" x-text="item.percentage + '%'"></span>
                                         </td>
@@ -921,7 +927,7 @@
                 <form @submit.prevent="saveStudent" class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">ID Siswa (ID Unik)</label>
-                        <input type="text" x-model="studentForm.id" :disabled="isEditMode" placeholder="Contoh: 202601" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none" required>
+                        <input type="text" x-model="studentForm.id" :disabled="isEditMode" placeholder="Contoh: 202601" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none animate-pulse-disabled" required>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Lengkap Siswa</label>
@@ -1053,8 +1059,6 @@
     </div>
 
     <script>
-        // === CONFIGURATION ===
-        // Web App URL dari deploy Google Apps Script Anda (URL yang Anda berikan sudah dimasukkan langsung)
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydJwQN5oPAmwd2LW5W8XcXFIRae_RWKI9BYFVVWovLAAJf2ZPz3-UDytZhoNe5MX0XUg/exec";
         const ADMIN_PIN = "12345";
 
@@ -1171,8 +1175,22 @@
                         this.waSettings = JSON.parse(savedWASettings);
                     }
 
+                    // Tentukan tgl hari ini sebagai default di input
+                    const dateInput = document.getElementById('attendance-date');
+                    if (dateInput) {
+                        const today = new Date().toISOString().split('T')[0];
+                        dateInput.value = today;
+                    }
+
                     // Ambil data pertama kali dari cloud sheets
                     await this.syncData();
+
+                    // Hilangkan skeleton loading setelah semuanya terinisialisasi
+                    const skeleton = document.getElementById('initial-loading');
+                    if (skeleton) {
+                        skeleton.classList.add('opacity-0');
+                        setTimeout(() => skeleton.remove(), 300);
+                    }
 
                     // Watch tabs updates to render charts automatically
                     this.$watch('currentTab', value => {
@@ -1329,7 +1347,7 @@
                             this.handleScannedStudent(decodedText);
                             this.playBeep();
                         }, () => {
-                            // Silent err handling
+                            // Silent err handling for continuous scanning
                         });
                     });
                 },
@@ -1404,14 +1422,14 @@
                     await this.postData('saveAttendance', savedLogs);
                     this.showToast('Absensi kelas berhasil disimpan!', 'success');
 
-                    // If autoSend WA is true, process
+                    // If autoSend WA is true, process background broadcast
                     if (this.waSettings.autoSend) {
                         this.sendWAAutoBackground(savedLogs);
                     }
                 },
 
                 getWADraftLogs() {
-                    const dateVal = '2026-06-07'; // Filter today logs simulation
+                    const dateVal = document.getElementById('attendance-date') ? document.getElementById('attendance-date').value : '2026-06-07';
                     const todayLogs = this.attendanceLog.filter(al => al.date === dateVal);
                     return todayLogs.map(l => {
                         const std = this.students.find(s => s.id === l.studentId);
@@ -1485,7 +1503,7 @@
                             this.showToast(`WA Terkirim ke nomor ${phone}`, 'success');
                         }
                     } catch (e) {
-                        console.warn("Fonnte API offline or error", e);
+                        console.warn("Fonnte API offline atau terjadi galat", e);
                     }
                 },
 
@@ -1574,7 +1592,7 @@
                                     label: 'Tingkat Kehadiran (%)',
                                     data: [92, 94, 88, 95, 93, 90],
                                     borderColor: '#4f46e5',
-                                    backgroundColor: '#4f46e5/20',
+                                    backgroundColor: 'rgba(79, 70, 229, 0.15)',
                                     tension: 0.3,
                                     fill: true
                                 }]
