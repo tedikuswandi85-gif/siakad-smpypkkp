@@ -446,7 +446,7 @@
                 <template x-if="role === 'admin' || role === 'teacher'">
                     <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
                         <h3 class="font-bold text-lg text-slate-900 mb-4">Catat Jurnal Pembelajaran Baru</h3>
-                        <form @submit.prevent="submitJournal" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <form @submit.prevent="submitJournal()" class="grid grid-cols-1 md:grid-cols-3 gap-5">
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Pilih Kelas & Mapel</label>
                                 <div class="grid grid-cols-2 gap-2">
@@ -832,10 +832,22 @@
                             <canvas id="recapDoughnutChart"></canvas>
                         </div>
                         <div class="space-y-2 mt-4 text-xs font-bold text-slate-600">
-                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-2"></span> Hadir</span> <span class="font-extrabold" x-text="recapTotals.hadir">0</span></div>
-                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-amber-500 mr-2"></span> Izin</span> <span class="font-extrabold" x-text="recapTotals.izin">0</span></div>
-                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-cyan-500 mr-2"></span> Sakit</span> <span class="font-extrabold" x-text="recapTotals.sakit">0</span></div>
-                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-rose-500 mr-2"></span> Alpa</span> <span class="font-extrabold" x-text="recapTotals.alpa">0</span></div>
+                            <div class="flex justify-between items-center">
+                                <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-2"></span> Hadir</span> 
+                                <span class="font-extrabold" x-text="recapTotals.hadir">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-amber-500 mr-2"></span> Izin</span> 
+                                <span class="font-extrabold" x-text="recapTotals.izin">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-cyan-500 mr-2"></span> Sakit</span> 
+                                <span class="font-extrabold" x-text="recapTotals.sakit">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-rose-500 mr-2"></span> Alpa</span> 
+                                <span class="font-extrabold" x-text="recapTotals.alpa">0</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1428,6 +1440,43 @@
                     }
                 },
 
+                async submitJournal() {
+                    if (!this.activeClass || !this.activeSubject || !this.journalForm.topic || !this.journalForm.summary) {
+                        this.showToast('Harap lengkapi seluruh kolom wajib!', 'error');
+                        return;
+                    }
+
+                    const today = new Date();
+                    const dateStr = today.toISOString().split('T')[0];
+                    const timeStr = today.toTimeString().split(' ')[0].substring(0, 5); // "HH:MM"
+
+                    const newJournal = {
+                        id: 'J_' + Date.now(),
+                        date: dateStr,
+                        time: timeStr,
+                        className: this.activeClass,
+                        subject: this.activeSubject,
+                        topic: this.journalForm.topic,
+                        summary: this.journalForm.summary,
+                        homework: this.journalForm.homework || '',
+                        teacher: this.currentUser ? this.currentUser.name : 'Administrator'
+                    };
+
+                    this.journals.unshift(newJournal);
+
+                    // Sync ke Sheets
+                    const success = await this.postData('saveJournal', newJournal);
+                    if (success) {
+                        this.showToast('Jurnal belajar berhasil disimpan!', 'success');
+                        // Reset forms
+                        this.journalForm.topic = '';
+                        this.journalForm.summary = '';
+                        this.journalForm.homework = '';
+                    } else {
+                        this.showToast('Gagal sinkron ke Google Sheets, tersimpan secara lokal', 'warning');
+                    }
+                },
+
                 getWADraftLogs() {
                     const dateVal = document.getElementById('attendance-date') ? document.getElementById('attendance-date').value : '2026-06-07';
                     const todayLogs = this.attendanceLog.filter(al => al.date === dateVal);
@@ -1447,7 +1496,7 @@
                 },
 
                 generateWAMessage(log) {
-                    return `Bapak/Ibu ${log.parentName || 'Wali Murid'},\nMenginformasikan bahwa hari ini tanggal ${log.date}, putra/putri Anda: ${log.name} dalam mata pelajaran ${log.subject} tercatat dengan status: *${log.status || 'Alpa'}*. Terima kasih.`;
+                    return `Bapak/Ibu Orang Tua/Wali dari ${log.name},\n\nMenginformasikan bahwa pada tanggal ${log.date}, putra/putri Anda tercatat *${log.status || 'Alpa'}* dalam kegiatan belajar mengajar Mata Pelajaran ${log.subject}.\n\nDemikian laporan kehadiran ini kami sampaikan. Terima kasih.`;
                 },
 
                 simulateHPMini(log) {
@@ -1489,21 +1538,62 @@
                 },
 
                 async sendToFonnte(phone, text) {
+                    if (!this.waSettings.token) {
+                        this.showToast('Gagal kirim, Token Fonnte belum diisi!', 'error');
+                        return;
+                    }
+
                     try {
+                        const formData = new FormData();
+                        formData.append('target', phone);
+                        formData.append('message', text);
+
                         const response = await fetch('https://api.fonnte.com/send', {
                             method: 'POST',
                             headers: {
-                                'Authorization': this.waSettings.token,
-                                'Content-Type': 'application/json'
+                                'Authorization': this.waSettings.token
                             },
-                            body: JSON.stringify({ target: phone, message: text })
+                            body: formData
                         });
+                        
                         const res = await response.json();
                         if (res.status) {
-                            this.showToast(`WA Terkirim ke nomor ${phone}`, 'success');
+                            this.showToast(`WA Berhasil Terkirim ke ${phone.substring(0,6)}...`, 'success');
+                        } else {
+                            this.showToast(`Gagal mengirim WA: ${res.reason || 'Sinyal Terputus'}`, 'error');
                         }
                     } catch (e) {
-                        console.warn("Fonnte API offline atau terjadi galat", e);
+                        console.warn("Fonnte API offline atau terjadi galat jaringan", e);
+                        this.showToast('Koneksi WA Gateway terganggu', 'error');
+                    }
+                },
+
+                shareJournalToParents(jr) {
+                    const classStudents = this.students.filter(s => s.className === jr.className);
+                    if (classStudents.length === 0) {
+                        this.showToast(`Tidak ada data siswa untuk kelas ${jr.className}`, 'error');
+                        return;
+                    }
+
+                    const homeworkInfo = jr.homework ? `\n📌 Tugas/PR: ${jr.homework}` : '';
+                    const message = `Bapak/Ibu Orang Tua Siswa Kelas ${jr.className},\n\nBerikut ringkasan materi pelajaran siswa hari ini:\n📖 Mapel: ${jr.subject}\n👤 Guru: ${jr.teacher}\n📝 Pembahasan: ${jr.topic}\n💬 Ringkasan: ${jr.summary}${homeworkInfo}\n\nTerima kasih atas perhatiannya.`;
+
+                    // Ambil gabungan nomor telepon dipisahkan dengan koma
+                    const parentPhones = classStudents.map(s => s.parentPhone).filter(phone => phone).join(',');
+
+                    if (this.waSettings.autoSend && this.waSettings.token && parentPhones) {
+                        this.showToast(`Mengirim laporan jurnal ke orang tua kelas ${jr.className}...`, 'info');
+                        this.sendToFonnte(parentPhones, message);
+                    } else {
+                        // Fallback ke simulator
+                        this.activeSimulatedMessage = message;
+                        this.showToast('Draf Jurnal dimuat di Simulator WA! Masukkan token Fonnte untuk broadcast otomatis.', 'info');
+                        
+                        const firstStd = classStudents[0];
+                        if (firstStd && firstStd.parentPhone) {
+                            const url = `https://api.whatsapp.com/send?phone=${firstStd.parentPhone}&text=${encodeURIComponent(message)}`;
+                            window.open(url, '_blank');
+                        }
                     }
                 },
 
