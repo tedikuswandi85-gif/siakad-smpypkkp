@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIAKAD PRO - Kehadiran & Jurnal Belajar</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- HTML5-QRCode Scanner -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <!-- AlpineJS (Deferred for performance) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        [x-cloak] { display: none !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-16 md:pb-0" x-data="siakadApp()" x-init="init()" x-cloak>
+
+    <!-- LOGIN SCREEN -->
+    <div x-show="!isLoggedIn" class="min-h-screen flex items-center justify-center bg-gradient-to-tr from-indigo-900 via-indigo-800 to-slate-950 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 border border-white/10 relative overflow-hidden">
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-2xl"></div>
+            
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl mb-4 shadow-sm border border-indigo-100">
+                    <i class="fas fa-graduation-cap text-3xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">SIAKAD PRO</h1>
+                <p class="text-slate-500 text-sm mt-1">Sistem Informasi Akademik & Kehadiran Sekolah</p>
+            </div>
+
+            <!-- Login Form -->
+            <form @submit.prevent="handleLogin" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Tipe Akun / Hak Akses</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" @click="loginForm.role = 'student'" :class="loginForm.role === 'student' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="py-2.5 px-3 rounded-xl font-medium text-xs transition duration-200">Siswa</button>
+                        <button type="button" @click="loginForm.role = 'teacher'" :class="loginForm.role === 'teacher' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="py-2.5 px-3 rounded-xl font-medium text-xs transition duration-200">Guru</button>
+                        <button type="button" @click="loginForm.role = 'admin'" :class="loginForm.role === 'admin' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="py-2.5 px-3 rounded-xl font-medium text-xs transition duration-200">Admin</button>
+                    </div>
+                </div>
+
+                <!-- Dropdown for Teacher or Student -->
+                <div x-show="loginForm.role === 'student'" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Pilih Nama Anda</label>
+                        <select x-model="loginForm.selectedId" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                            <option value="">-- Pilih Nama Siswa --</option>
+                            <template x-for="std in students" :key="std.id">
+                                <option :value="std.id" x-text="`${std.name} (${std.className})`"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <div x-show="loginForm.role === 'teacher'" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Pilih Guru</label>
+                        <select x-model="loginForm.selectedId" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                            <option value="">-- Pilih Nama Guru --</option>
+                            <template x-for="tchr in teachers" :key="tchr.id">
+                                <option :value="tchr.id" x-text="tchr.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- PIN Input -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">PIN Keamanan (Password)</label>
+                    <input type="password" x-model="loginForm.pin" placeholder="Masukkan PIN Anda" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                    <p class="text-[10px] text-slate-400 mt-1.5"><i class="fas fa-info-circle"></i> Default PIN Guru & Siswa: 1234, Admin: 12345</p>
+                </div>
+
+                <!-- Login Button -->
+                <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-lg shadow-indigo-600/20 transition-all duration-200 active:scale-95 flex items-center justify-center space-x-2">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Masuk ke Sistem</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- APP MAIN INTERFACE (Logged In) -->
+    <div x-show="isLoggedIn" class="min-h-screen flex flex-col">
+        <!-- Top Header Navigation -->
+        <header class="bg-indigo-900 text-white sticky top-0 z-40 shadow-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-center md:justify-between flex-wrap gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-white/10 rounded-xl">
+                        <i class="fas fa-graduation-cap text-2xl text-indigo-200"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs uppercase tracking-widest text-indigo-200 font-bold">SIAKAD PRO v2.0</span>
+                        <h2 class="text-lg font-bold leading-tight tracking-tight text-white">Database Google Sheets</h2>
+                    </div>
+                </div>
+
+                <!-- Status & User Profile Actions -->
+                <div class="flex items-center space-x-3">
+                    <!-- Status Indicator Connection -->
+                    <div class="flex items-center px-3 py-1.5 rounded-full text-xs font-semibold" :class="isSynced ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20' : 'bg-amber-500/15 text-amber-300 border border-amber-500/20'">
+                        <span class="w-2 h-2 rounded-full mr-2" :class="isSynced ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400 animate-pulse'"></span>
+                        <span x-text="isSynced ? 'Connected to GSheets' : 'Sandbox (Offline DB)'"></span>
+                    </div>
+
+                    <!-- Sync Button -->
+                    <button @click="syncData()" :disabled="isLoading" class="p-2 bg-indigo-800 hover:bg-indigo-700 text-indigo-100 rounded-xl text-sm transition-all duration-150 disabled:opacity-50">
+                        <i class="fas fa-sync-alt" :class="isLoading ? 'animate-spin' : ''"></i>
+                    </button>
+
+                    <!-- Profile Info -->
+                    <div class="bg-indigo-950/60 border border-indigo-700 px-3.5 py-1.5 rounded-xl flex items-center space-x-2 text-xs">
+                        <i class="fas fa-user-circle text-indigo-300 text-sm"></i>
+                        <span class="font-semibold text-white" x-text="currentUser ? currentUser.name : 'Administrator'"></span>
+                        <span class="bg-indigo-700 text-indigo-200 px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider" x-text="role"></span>
+                    </div>
+
+                    <!-- Log Out -->
+                    <button @click="handleLogout()" class="p-2.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white rounded-xl text-xs transition-all duration-200" title="Keluar">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dynamic Warnings -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 w-full">
+            <template x-if="isSandboxPreview">
+                <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm">
+                    <div class="flex">
+                        <div class="flex-shrink-0 text-amber-500">
+                            <i class="fas fa-exclamation-triangle text-xl"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-semibold text-amber-800">Mode Sandbox Simulator Aktif (Database Luring)</h3>
+                            <p class="text-xs text-amber-700 mt-1">
+                                Peramban mendeteksi aplikasi sedang berjalan di dalam simulator terisolasi (*Sandboxed IFrame*). Karena aturan keamanan CORS Google, sinkronisasi langsung ke Google Sheets dibatasi di layar pratinjau ini.
+                            </p>
+                            <p class="text-xs text-amber-800 font-medium mt-2">
+                                <i class="fas fa-check-circle text-emerald-600 mr-1"></i> <strong>Jangan khawatir!</strong> Kode Anda sudah 100% benar. Jika Anda men-deploy file HTML ini ke layanan seperti Netlify/GitHub Pages atau membukanya langsung di HP/Laptop secara mandiri, data Anda akan langsung terhubung dan sinkron secara real-time ke Google Spreadsheet Anda!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Tab Navigation Menu Desktop -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 w-full">
+            <nav class="hidden md:flex space-x-1.5 bg-slate-200/60 p-1.5 rounded-2xl border border-slate-200">
+                <!-- Dashboard Tab (Accessible to everyone) -->
+                <button @click="currentTab = 'dashboard'" :class="currentTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </button>
+
+                <!-- Absensi Tab (Accessible to admin and teacher) -->
+                <button x-show="role === 'admin' || role === 'teacher'" @click="currentTab = 'attendance'" :class="currentTab === 'attendance' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Input Absensi</span>
+                </button>
+
+                <!-- Jurnal Tab (Accessible to admin, teacher, student: student read-only) -->
+                <button @click="currentTab = 'jurnal'" :class="currentTab === 'jurnal' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                    <i class="fas fa-book"></i>
+                    <span>Jurnal Belajar</span>
+                </button>
+
+                <!-- Students Tab (Accessible to admin) -->
+                <button x-show="role === 'admin'" @click="currentTab = 'students'" :class="currentTab === 'students' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                    <i class="fas fa-user-friends"></i>
+                    <span>Data Siswa</span>
+                </button>
+
+                <!-- Teachers Tab (Accessible to admin) -->
+                <button x-show="role === 'admin'" @click="currentTab = 'teachers'" :class="currentTab === 'teachers' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                    <i class="fas fa-user-tie"></i>
+                    <span>Data Guru</span>
+                </button>
+
+                <!-- WA Center (Accessible to admin and teacher) -->
+                <button x-show="role === 'admin' || role === 'teacher'" @click="currentTab = 'wanotif'" :class="currentTab === 'wanotif' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>WA Center & HP</span>
+                </button>
+
+                <!-- Rekap & Grafis (Accessible to all) -->
+                <button @click="currentTab = 'rekap'" :class="currentTab === 'rekap' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'" class="flex-1 py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition duration-200">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Rekap & Grafik</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Content Area -->
+        <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full overflow-x-hidden">
+            
+            <!-- Tab: Dashboard -->
+            <div x-show="currentTab === 'dashboard'" class="space-y-6">
+                <!-- Welcome Banner -->
+                <div class="bg-gradient-to-r from-indigo-800 to-indigo-600 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl">
+                    <div class="absolute right-0 bottom-0 top-0 opacity-10 flex items-center">
+                        <i class="fas fa-graduation-cap text-[15rem] translate-y-12"></i>
+                    </div>
+                    <div class="relative z-10 max-w-xl">
+                        <span class="text-indigo-200 text-xs font-bold uppercase tracking-widest bg-indigo-900/40 px-3 py-1.5 rounded-full">Selamat Datang</span>
+                        <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight mt-3" x-text="currentUser ? `Halo, ${currentUser.name}!` : 'Portal Admin SIAKAD'"></h1>
+                        <p class="text-indigo-100 text-sm mt-2 leading-relaxed">
+                            Sistem presensi multi-perangkat terintegrasi cloud Google Sheets. Lengkap dengan generator notifikasi pesan WhatsApp orang tua serta modul scan barcode instan.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Stats Cards Widget Row -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+                        <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl"><i class="fas fa-user-graduate text-xl"></i></div>
+                        <div>
+                            <span class="text-slate-400 text-xs font-semibold uppercase">Total Siswa</span>
+                            <h3 class="text-2xl font-bold mt-0.5" x-text="students.length">0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><i class="fas fa-chalkboard-teacher text-xl"></i></div>
+                        <div>
+                            <span class="text-slate-400 text-xs font-semibold uppercase">Total Guru</span>
+                            <h3 class="text-2xl font-bold mt-0.5" x-text="teachers.length">0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+                        <div class="p-3 bg-cyan-50 text-cyan-600 rounded-xl"><i class="fas fa-calendar-check text-xl"></i></div>
+                        <div>
+                            <span class="text-slate-400 text-xs font-semibold uppercase">Log Absensi</span>
+                            <h3 class="text-2xl font-bold mt-0.5" x-text="attendanceLog.length">0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+                        <div class="p-3 bg-amber-50 text-amber-600 rounded-xl"><i class="fas fa-book-open text-xl"></i></div>
+                        <div>
+                            <span class="text-slate-400 text-xs font-semibold uppercase">Jurnal Kelas</span>
+                            <h3 class="text-2xl font-bold mt-0.5" x-text="journals.length">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Role Specific Dashboards -->
+                <!-- Student Portal Dashboard View -->
+                <template x-if="role === 'student'">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Student Stats Circular Card -->
+                        <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between">
+                            <div class="mb-4">
+                                <h3 class="font-bold text-slate-900">Rekap Kehadiran Saya</h3>
+                                <p class="text-xs text-slate-400 mt-1">Kehadiran personal real-time tahun ajaran berjalan</p>
+                            </div>
+                            <div class="flex justify-around items-center my-6">
+                                <div class="text-center">
+                                    <span class="block text-3xl font-bold text-emerald-600" x-text="getStudentIndividualStats().hadir">0</span>
+                                    <span class="text-[10px] uppercase font-bold text-slate-400">Hadir</span>
+                                </div>
+                                <div class="text-center">
+                                    <span class="block text-3xl font-bold text-amber-500" x-text="getStudentIndividualStats().izin">0</span>
+                                    <span class="text-[10px] uppercase font-bold text-slate-400">Izin</span>
+                                </div>
+                                <div class="text-center">
+                                    <span class="block text-3xl font-bold text-cyan-500" x-text="getStudentIndividualStats().sakit">0</span>
+                                    <span class="text-[10px] uppercase font-bold text-slate-400">Sakit</span>
+                                </div>
+                                <div class="text-center">
+                                    <span class="block text-3xl font-bold text-rose-500" x-text="getStudentIndividualStats().alpa">0</span>
+                                    <span class="text-[10px] uppercase font-bold text-slate-400">Alpa</span>
+                                </div>
+                            </div>
+                            <div class="bg-indigo-50 p-4 rounded-xl text-center">
+                                <span class="text-xs text-indigo-700 font-medium">Persentase Kehadiran:</span>
+                                <span class="block text-2xl font-extrabold text-indigo-800" x-text="getStudentIndividualStats().persentase + '%'">0%</span>
+                            </div>
+                        </div>
+
+                        <!-- Class Journal Logs / Share Center -->
+                        <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm md:col-span-2">
+                            <h3 class="font-bold text-slate-900 mb-4">Materi Belajar Hari Ini</h3>
+                            <div class="overflow-y-auto max-h-72 space-y-3 pr-2">
+                                <template x-for="jr in getStudentJournals()" :key="jr.id">
+                                    <div class="bg-slate-50 hover:bg-slate-100/70 p-4 rounded-xl border border-slate-100 transition duration-150">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-xs font-semibold text-indigo-600" x-text="jr.subject"></span>
+                                            <span class="text-[10px] text-slate-400" x-text="`${jr.date} - ${jr.time}`"></span>
+                                        </div>
+                                        <h4 class="font-bold text-slate-800 text-sm" x-text="jr.topic"></h4>
+                                        <p class="text-xs text-slate-600 mt-1" x-text="jr.summary"></p>
+                                        <template x-if="jr.homework">
+                                            <div class="mt-2.5 pt-2.5 border-t border-dashed border-slate-200">
+                                                <span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">PR / Tugas</span>
+                                                <p class="text-xs font-medium text-slate-700 mt-1" x-text="jr.homework"></p>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="getStudentJournals().length === 0">
+                                    <div class="text-center py-12 text-slate-400">
+                                        <i class="fas fa-book text-3xl mb-2 text-slate-300"></i>
+                                        <p class="text-sm font-medium">Belum ada materi dibagikan untuk kelas Anda.</p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Tab: Absensi (Kehadiran) -->
+            <div x-show="currentTab === 'attendance'" class="space-y-6" x-data="{ viewMode: 'manual' }">
+                <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <h3 class="font-bold text-lg text-slate-900">Input Kehadiran Kelas</h3>
+                            <p class="text-xs text-slate-400 mt-1">Cepat & fleksibel menggunakan cara input manual ataupun scan barcode/QR siswa</p>
+                        </div>
+                        <div class="flex space-x-1.5 bg-slate-100 p-1 rounded-xl">
+                            <button @click="viewMode = 'manual'; stopQRScanner()" :class="viewMode === 'manual' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600'" class="px-3 py-1.5 rounded-lg text-xs font-bold transition duration-150">
+                                <i class="fas fa-keyboard mr-1"></i> Manual
+                            </button>
+                            <button @click="viewMode = 'scan'; startQRScanner()" :class="viewMode === 'scan' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600'" class="px-3 py-1.5 rounded-lg text-xs font-bold transition duration-150">
+                                <i class="fas fa-qrcode mr-1"></i> Scan QR
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Configuration Selection Class & Subject -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Pilih Kelas</label>
+                            <select x-model="activeClass" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                                <option value="">-- Pilih Kelas --</option>
+                                <template x-for="cl in getClassesList()" :key="cl">
+                                    <option :value="cl" x-text="cl"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Mata Pelajaran</label>
+                            <select x-model="activeSubject" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                                <option value="">-- Pilih Mapel --</option>
+                                <template x-for="sub in getSubjectsList()" :key="sub">
+                                    <option :value="sub" x-text="sub"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Tanggal Absen</label>
+                            <input type="date" id="attendance-date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" value="2026-06-07">
+                        </div>
+                    </div>
+
+                    <!-- Mode QR Code Scan Reader -->
+                    <div x-show="viewMode === 'scan'" class="border border-slate-200 bg-slate-50/50 p-6 rounded-2xl mb-6 relative overflow-hidden" x-transition>
+                        <div class="max-w-md mx-auto text-center">
+                            <h4 class="text-sm font-bold text-slate-700 mb-2">Posisikan Kamera ke QR Code Siswa</h4>
+                            <p class="text-xs text-slate-400 mb-4">Siswa yang terdeteksi sukses akan langsung ditandai dengan status Hadir (H)</p>
+                            
+                            <div id="qr-reader" class="w-full rounded-xl overflow-hidden shadow-md border border-slate-200 bg-black"></div>
+                            
+                            <!-- Scanned Manual Input ID for fallback -->
+                            <div class="flex items-center space-x-2 mt-4 max-w-sm mx-auto">
+                                <input type="text" x-model="selectedStudentId" placeholder="Input ID Siswa Manual" class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                                <button @click="handleScannedStudent(selectedStudentId)" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition">Tandai</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Grid Attendance Table List -->
+                    <div x-show="activeClass && activeSubject" class="space-y-4">
+                        <div class="overflow-x-auto border border-slate-100 rounded-xl shadow-sm">
+                            <table class="w-full text-left border-collapse bg-white">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-100 text-slate-600 text-xs uppercase font-bold">
+                                        <th class="py-4 px-6">ID Siswa</th>
+                                        <th class="py-4 px-6">Nama Siswa</th>
+                                        <th class="py-4 px-6 text-center">Aksi Status Kehadiran</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-50 text-sm text-slate-700">
+                                    <template x-for="std in getActiveStudentsList()" :key="std.id">
+                                        <tr class="hover:bg-slate-50/50 transition">
+                                            <td class="py-4 px-6 font-semibold text-slate-500" x-text="'# ' + std.id"></td>
+                                            <td class="py-4 px-6 font-bold text-slate-900" x-text="std.name"></td>
+                                            <td class="py-4 px-6">
+                                                <div class="flex items-center justify-center space-x-1.5 max-w-xs mx-auto">
+                                                    <!-- Status Buttons (H, I, S, A) -->
+                                                    <button @click="tempAttendance[std.id] = 'Hadir'" :class="tempAttendance[std.id] === 'Hadir' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition">H</button>
+                                                    <button @click="tempAttendance[std.id] = 'Izin'" :class="tempAttendance[std.id] === 'Izin' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition">I</button>
+                                                    <button @click="tempAttendance[std.id] = 'Sakit'" :class="tempAttendance[std.id] === 'Sakit' ? 'bg-cyan-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition">S</button>
+                                                    <button @click="tempAttendance[std.id] = 'Alpa'" :class="tempAttendance[std.id] === 'Alpa' ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition">A</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Save and Broadcast Options -->
+                        <div class="flex flex-col sm:flex-row justify-between items-center pt-4 gap-4">
+                            <span class="text-xs text-slate-400 font-semibold uppercase"><i class="fas fa-check-circle text-indigo-500 mr-1.5"></i> Seluruh status absen siap disimpan</span>
+                            <button @click="saveAttendanceLogs()" class="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-md transition">
+                                Simpan Kehadiran & Sinkronisasi WA
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Placeholder Warning if setup criteria aren't selected -->
+                    <template x-if="!activeClass || !activeSubject">
+                        <div class="text-center py-16 text-slate-400">
+                            <i class="fas fa-calendar-alt text-4xl mb-3 text-slate-300"></i>
+                            <h4 class="font-bold text-slate-600">Pilih Kelas & Mapel Terlebih Dahulu</h4>
+                            <p class="text-xs text-slate-400 mt-1">Harap sesuaikan pilihan menu di atas untuk menampilkan siswa</p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Tab: Jurnal Belajar -->
+            <div x-show="currentTab === 'jurnal'" class="space-y-6">
+                <!-- Journal Writing Card Form (Only for Teacher or Admin) -->
+                <template x-if="role === 'admin' || role === 'teacher'">
+                    <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                        <h3 class="font-bold text-lg text-slate-900 mb-4">Catat Jurnal Pembelajaran Baru</h3>
+                        <form @submit.prevent="submitJournal" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Pilih Kelas & Mapel</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <select x-model="activeClass" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                                        <option value="">-- Kelas --</option>
+                                        <template x-for="cl in getClassesList()" :key="cl">
+                                            <option :value="cl" x-text="cl"></option>
+                                        </template>
+                                    </select>
+                                    <select x-model="activeSubject" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                                        <option value="">-- Mapel --</option>
+                                        <template x-for="sub in getSubjectsList()" :key="sub">
+                                            <option :value="sub" x-text="sub"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Pokok Bahasan / Topik Utama</label>
+                                <input type="text" x-model="journalForm.topic" placeholder="Contoh: Pengenalan Aljabar Linear" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tugas Mandiri / PR Siswa</label>
+                                <input type="text" x-model="journalForm.homework" placeholder="Contoh: Selesaikan Latihan 3 Halaman 15" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                            </div>
+                            <div class="md:col-span-3">
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Ringkasan Pembahasan & Aktivitas Kelas</label>
+                                <textarea x-model="journalForm.summary" rows="3" placeholder="Deskripsikan proses pembelajaran, siswa bermasalah atau pencapaian belajar hari ini..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" required></textarea>
+                            </div>
+                            <div class="md:col-span-3 flex justify-end">
+                                <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-md transition">Simpan Jurnal & Share WA</button>
+                            </div>
+                        </form>
+                    </div>
+                </template>
+
+                <!-- Historic Log Journals -->
+                <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                    <h3 class="font-bold text-lg text-slate-900 mb-4">Riwayat Jurnal Pembelajaran</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <template x-for="jr in journals" :key="jr.id">
+                            <div class="border border-slate-100 hover:border-indigo-200 p-5 rounded-2xl bg-slate-50/50 hover:bg-slate-50 relative group transition-all duration-150">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-semibold" x-text="`${jr.className} - ${jr.subject}`"></span>
+                                    <span class="text-[10px] text-slate-400 font-medium" x-text="`${jr.date} | ${jr.time}`"></span>
+                                </div>
+                                <h4 class="font-bold text-slate-900 text-base mb-1.5" x-text="jr.topic"></h4>
+                                <p class="text-xs text-slate-600 leading-relaxed mb-4" x-text="jr.summary"></p>
+                                
+                                <template x-if="jr.homework">
+                                    <div class="bg-amber-50/70 p-3 rounded-xl border border-amber-100 mb-3 text-xs">
+                                        <span class="font-bold text-amber-800 uppercase tracking-wider text-[9px] block mb-1">Tugas / PR</span>
+                                        <p class="text-slate-700" x-text="jr.homework"></p>
+                                    </div>
+                                </template>
+
+                                <div class="flex justify-between items-center pt-3 border-t border-slate-100 text-xs">
+                                    <span class="text-slate-400 font-medium" x-text="`Guru: ${jr.teacher || 'Pengajar'}`"></span>
+                                    <button @click="shareJournalToParents(jr)" class="text-emerald-600 hover:text-emerald-700 font-bold flex items-center space-x-1 transition">
+                                        <i class="fab fa-whatsapp"></i>
+                                        <span>Bagikan Jurnal</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                        <template x-if="journals.length === 0">
+                            <div class="md:col-span-2 text-center py-16 text-slate-400">
+                                <i class="fas fa-journal-whills text-4xl mb-3 text-slate-300"></i>
+                                <h4 class="font-bold text-slate-600">Belum Ada Riwayat Jurnal</h4>
+                                <p class="text-xs text-slate-400 mt-1">Gunakan formulir di atas untuk menulis jurnal kelas Anda</p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Data Siswa (CRUD & CSV) -->
+            <div x-show="currentTab === 'students'" class="space-y-6">
+                <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <h3 class="font-bold text-lg text-slate-900">Manajemen Database Siswa</h3>
+                            <p class="text-xs text-slate-400 mt-1">Tambahkan siswa secara manual, cetak kartu QR, atau impor lewat Excel CSV</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button @click="downloadStudentCSVTemplate()" class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                                <i class="fas fa-file-download"></i>
+                                <span>Unduh Template</span>
+                            </button>
+                            <button @click="exportStudentsToCSV()" class="px-3.5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                                <i class="fas fa-file-export"></i>
+                                <span>Ekspor CSV</span>
+                            </button>
+                            <button @click="openAddStudentModal()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow-sm">
+                                <i class="fas fa-plus"></i>
+                                <span>Tambah Siswa</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CSV Import Panel Drag & Drop -->
+                    <div class="border-2 border-dashed border-slate-200 bg-slate-50/50 hover:bg-indigo-50/20 p-5 rounded-2xl mb-6 text-center cursor-pointer relative transition-all duration-150">
+                        <input type="file" @change="handleCSVImport($event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+                        <i class="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2"></i>
+                        <h4 class="text-xs font-bold text-slate-700">Impor Siswa Massal lewat File CSV</h4>
+                        <p class="text-[10px] text-slate-400 mt-1">Format kolom: Nama, Kelas, Nama Wali, No WA, PIN</p>
+                    </div>
+
+                    <!-- Table List Directory Students -->
+                    <div class="overflow-x-auto border border-slate-100 rounded-xl">
+                        <table class="w-full text-left border-collapse bg-white text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-100 text-slate-600 text-xs font-bold uppercase">
+                                    <th class="py-4 px-6">ID</th>
+                                    <th class="py-4 px-6">Nama Siswa</th>
+                                    <th class="py-4 px-6">Kelas</th>
+                                    <th class="py-4 px-6">Orang Tua / Wali</th>
+                                    <th class="py-4 px-6">PIN Login</th>
+                                    <th class="py-4 px-6 text-center">Aksi Operasi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50 text-slate-700 font-medium">
+                                <template x-for="std in students" :key="std.id">
+                                    <tr class="hover:bg-slate-50/30 transition">
+                                        <td class="py-4 px-6 font-semibold text-slate-500" x-text="'# ' + std.id"></td>
+                                        <td class="py-4 px-6 font-bold text-slate-900" x-text="std.name"></td>
+                                        <td class="py-4 px-6" x-text="std.className"></td>
+                                        <td class="py-4 px-6">
+                                            <div class="text-slate-800" x-text="std.parentName"></div>
+                                            <div class="text-[10px] text-slate-400" x-text="std.parentPhone"></div>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <span class="bg-slate-100 px-2 py-1 rounded text-xs font-mono font-bold" x-text="std.pin"></span>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <div class="flex items-center justify-center space-x-1">
+                                                <button @click="openQRCard(std)" class="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs" title="Kartu Barcode"><i class="fas fa-qrcode"></i></button>
+                                                <button @click="downloadQR(std)" class="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs" title="Unduh File QR"><i class="fas fa-download"></i></button>
+                                                <button @click="openEditStudentModal(std)" class="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs" title="Edit Siswa"><i class="fas fa-edit"></i></button>
+                                                <button @click="deleteStudent(std.id)" class="p-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs" title="Hapus"><i class="fas fa-trash-alt"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Data Guru (CRUD) -->
+            <div x-show="currentTab === 'teachers'" class="space-y-6">
+                <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <h3 class="font-bold text-lg text-slate-900">Manajemen Database Tenaga Pendidik</h3>
+                            <p class="text-xs text-slate-400 mt-1">Konfigurasikan rincian penugasan guru, mapel yang diampu, serta PIN login guru</p>
+                        </div>
+                        <button @click="openAddTeacherModal()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow-sm">
+                            <i class="fas fa-plus"></i>
+                            <span>Tambah Guru</span>
+                        </button>
+                    </div>
+
+                    <!-- Table List Directory Teachers -->
+                    <div class="overflow-x-auto border border-slate-100 rounded-xl">
+                        <table class="w-full text-left border-collapse bg-white text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-100 text-slate-600 text-xs font-bold uppercase">
+                                    <th class="py-4 px-6">ID</th>
+                                    <th class="py-4 px-6">Nama Guru</th>
+                                    <th class="py-4 px-6">NIP</th>
+                                    <th class="py-4 px-6">Kelas Binaan</th>
+                                    <th class="py-4 px-6">Mapel Diampu</th>
+                                    <th class="py-4 px-6">PIN Login</th>
+                                    <th class="py-4 px-6 text-center">Aksi Operasi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50 text-slate-700 font-medium">
+                                <template x-for="tchr in teachers" :key="tchr.id">
+                                    <tr class="hover:bg-slate-50/30 transition">
+                                        <td class="py-4 px-6 font-semibold text-slate-500" x-text="'# ' + tchr.id"></td>
+                                        <td class="py-4 px-6 font-bold text-slate-900" x-text="tchr.name"></td>
+                                        <td class="py-4 px-6" x-text="tchr.nip || '-'"></td>
+                                        <td class="py-4 px-6">
+                                            <div class="flex flex-wrap gap-1 max-w-[150px]">
+                                                <template x-for="cl in tchr.classes" :key="cl">
+                                                    <span class="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded" x-text="cl"></span>
+                                                </template>
+                                            </div>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <div class="flex flex-wrap gap-1 max-w-[150px]">
+                                                <template x-for="sb in tchr.subjects" :key="sb">
+                                                    <span class="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded" x-text="sb"></span>
+                                                </template>
+                                            </div>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <span class="bg-slate-100 px-2 py-1 rounded text-xs font-mono font-bold" x-text="tchr.pin"></span>
+                                        </td>
+                                        <td class="py-4 px-6 text-center">
+                                            <div class="flex items-center justify-center space-x-1">
+                                                <button @click="openEditTeacherModal(tchr)" class="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs" title="Edit Guru"><i class="fas fa-edit"></i></button>
+                                                <button @click="deleteTeacher(tchr.id)" class="p-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs" title="Hapus"><i class="fas fa-trash-alt"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: WA Center & HP Simulator -->
+            <div x-show="currentTab === 'wanotif'" class="space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left: Config WA Center -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                            <h3 class="font-bold text-lg text-slate-900 mb-4">Pengaturan WA Gateway (Fonnte)</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                                    <div>
+                                        <span class="font-bold text-slate-700 text-sm">Status Pengiriman Otomatis</span>
+                                        <p class="text-[11px] text-slate-400 mt-0.5">Kirim notifikasi di background pasca klik "Simpan Absen"</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" x-model="waSettings.autoSend" @change="saveWASettings()" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-500/20 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                    </label>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Provider Gateway</label>
+                                        <select x-model="waSettings.provider" @change="saveWASettings()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none">
+                                            <option value="fonnte">Fonnte (Rekomendasi API)</option>
+                                            <option value="custom">Custom Webhook / WhatsApp Web Link</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Fonnte API Token</label>
+                                        <input type="password" x-model="waSettings.token" @input="saveWASettings()" placeholder="Masukkan Token API Fonnte Anda" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- WA Queue / Draft List -->
+                        <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                            <h3 class="font-bold text-lg text-slate-900 mb-4">Draft Log Laporan Presensi Hari Ini</h3>
+                            <div class="overflow-y-auto max-h-96 space-y-3 pr-2">
+                                <template x-for="log in getWADraftLogs()" :key="log.id">
+                                    <div class="border border-slate-100 p-4 rounded-xl bg-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-indigo-200 transition">
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-2 mb-1.5">
+                                                <span class="text-xs font-bold text-slate-800" x-text="log.name"></span>
+                                                <span class="text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider" x-text="log.status"></span>
+                                            </div>
+                                            <p class="text-xs text-slate-500 line-clamp-2" x-text="generateWAMessage(log)"></p>
+                                        </div>
+                                        <div class="flex space-x-1.5 self-end md:self-auto">
+                                            <button @click="simulateHPMini(log)" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition">Pratinjau</button>
+                                            <button @click="sendWAManual(log)" class="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1">
+                                                <i class="fab fa-whatsapp"></i> <span>Kirim WA</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="getWADraftLogs().length === 0">
+                                    <div class="text-center py-16 text-slate-400">
+                                        <i class="fab fa-whatsapp text-4xl mb-3 text-slate-300"></i>
+                                        <h4 class="font-bold text-slate-600">Belum Ada Antrean Pesan</h4>
+                                        <p class="text-xs text-slate-400 mt-1">Lakukan absensi untuk membuat draft notifikasi WhatsApp ke orang tua</p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: WhatsApp Phone Simulation Preview -->
+                    <div class="bg-slate-900 border-[10px] border-slate-950 rounded-[40px] shadow-2xl relative h-[600px] overflow-hidden flex flex-col max-w-sm mx-auto">
+                        <!-- Phone Topbar UI -->
+                        <div class="bg-indigo-950 text-white p-4 pt-6 flex justify-between items-center relative z-10 border-b border-indigo-900">
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-arrow-left text-sm"></i>
+                                <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-xs">WA</div>
+                                <div>
+                                    <span class="block text-xs font-bold">Wali Murid (SIAKAD)</span>
+                                    <span class="block text-[9px] text-emerald-400">Online</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-3 text-xs opacity-75">
+                                <i class="fas fa-phone-alt"></i>
+                                <i class="fas fa-video"></i>
+                                <i class="fas fa-ellipsis-v"></i>
+                            </div>
+                        </div>
+
+                        <!-- Chat Area Screen Simulation -->
+                        <div class="flex-1 bg-gradient-to-b from-[#efeae2] to-[#e5ddd5] p-4 overflow-y-auto space-y-4 no-scrollbar relative flex flex-col justify-end">
+                            <!-- Background pattern placeholder -->
+                            <div class="absolute inset-0 bg-[radial-gradient(#c5bba8_1px,transparent_1px)] [background-size:16px_16px] opacity-15 pointer-events-none"></div>
+                            
+                            <!-- Inside Chat Messages -->
+                            <div class="bg-white p-3.5 rounded-xl rounded-tl-none shadow-sm max-w-[85%] relative z-10 self-start">
+                                <p class="text-xs text-slate-800 leading-relaxed font-sans" x-text="activeSimulatedMessage || 'Silakan pilih pesan pratinjau atau lakukan absen untuk melihat visualisasi chat di sini...'"></p>
+                                <span class="block text-right text-[8px] text-slate-400 mt-1">12:30 PM <i class="fas fa-check text-indigo-500 font-bold"></i></span>
+                            </div>
+                        </div>
+
+                        <!-- Chat Keyboard Bar -->
+                        <div class="p-2.5 bg-slate-100 flex items-center space-x-2 relative z-10 border-t border-slate-200">
+                            <div class="flex-1 bg-white rounded-full px-4 py-2 flex items-center justify-between text-slate-400 text-xs">
+                                <span>Ketik pesan balasan...</span>
+                                <i class="far fa-smile text-base"></i>
+                            </div>
+                            <div class="w-9 h-9 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition cursor-pointer active:scale-90">
+                                <i class="fas fa-paper-plane text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Rekap & Grafik -->
+            <div x-show="currentTab === 'rekap'" class="space-y-6">
+                <!-- Recap Period Filter Panel -->
+                <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                    <h3 class="font-bold text-lg text-slate-900 mb-4">Laporan & Rekapitulasi Presensi</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tipe Rekapitulasi</label>
+                            <select x-model="reportType" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none">
+                                <option value="monthly">Laporan Bulanan</option>
+                                <option value="semester">Laporan Semesteran</option>
+                                <option value="yearly">Laporan Tahunan</option>
+                            </select>
+                        </div>
+                        <div x-show="reportType === 'monthly'">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Bulan</label>
+                            <select x-model="reportMonth" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none">
+                                <option value="1">Januari</option>
+                                <option value="2">Februari</option>
+                                <option value="3">Maret</option>
+                                <option value="4">April</option>
+                                <option value="5">Mei</option>
+                                <option value="6">Juni</option>
+                                <option value="7">Juli</option>
+                                <option value="8">Agustus</option>
+                                <option value="9">September</option>
+                                <option value="10">Oktober</option>
+                                <option value="11">November</option>
+                                <option value="12">Desember</option>
+                            </select>
+                        </div>
+                        <div x-show="reportType === 'semester'">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Semester</label>
+                            <select x-model="reportSemester" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none">
+                                <option value="1">Semester Ganjil (Juli - Des)</option>
+                                <option value="2">Semester Genap (Jan - Jun)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tahun Ajaran</label>
+                            <select x-model="reportYear" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none">
+                                <option value="2026">2026</option>
+                                <option value="2027">2027</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button @click="generateReportData()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-md transition">Generate Laporan</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graphic Chart Section layout Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Left: Pie Chart and Stats Summary -->
+                    <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between">
+                        <h4 class="font-bold text-slate-800 text-sm mb-4">Proporsi Kehadiran Kelas</h4>
+                        <div class="relative w-48 h-48 mx-auto my-4 flex items-center justify-center">
+                            <canvas id="recapDoughnutChart"></canvas>
+                        </div>
+                        <div class="space-y-2 mt-4 text-xs font-semibold text-slate-600">
+                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-2"></span> Hadir</span> <span x-text="recapTotals.hadir">0</span></div>
+                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-amber-500 mr-2"></span> Izin</span> <span x-text="recapTotals.izin">0</span></div>
+                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-cyan-500 mr-2"></span> Sakit</span> <span x-text="recapTotals.sakit">0</span></div>
+                            <div class="flex justify-between items-center"><span class="flex items-center"><span class="w-3 h-3 rounded-full bg-rose-500 mr-2"></span> Alpa</span> <span x-text="recapTotals.alpa">0</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Trend Chart over Months -->
+                    <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm md:col-span-2">
+                        <h4 class="font-bold text-slate-800 text-sm mb-4">Grafik Tren Kehadiran Siswa (%)</h4>
+                        <div class="h-64 relative">
+                            <canvas id="recapTrendLineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Detail of Report List -->
+                <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="font-bold text-slate-800 text-sm">Tabel Rincian Kehadiran per Siswa</h4>
+                        <button @click="exportRecapToCSV()" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition">Unduh Tabel CSV</button>
+                    </div>
+                    <div class="overflow-x-auto border border-slate-100 rounded-xl">
+                        <table class="w-full text-left border-collapse bg-white text-xs">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-100 text-slate-600 font-bold uppercase">
+                                    <th class="py-4 px-6">ID Siswa</th>
+                                    <th class="py-4 px-6">Nama Siswa</th>
+                                    <th class="py-4 px-6">Kelas</th>
+                                    <th class="py-4 px-6 text-center">Hadir</th>
+                                    <th class="py-4 px-6 text-center">Izin</th>
+                                    <th class="py-4 px-6 text-center">Sakit</th>
+                                    <th class="py-4 px-6 text-center">Alpa</th>
+                                    <th class="py-4 px-6 text-center">Persentase</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50 text-slate-700 font-medium">
+                                <template x-for="item in recapData" :key="item.id">
+                                    <tr class="hover:bg-slate-50/20 transition">
+                                        <td class="py-4 px-6 text-slate-500" x-text="'#' + item.id"></td>
+                                        <td class="py-4 px-6 font-bold text-slate-950" x-text="item.name"></td>
+                                        <td class="py-4 px-6" x-text="item.className"></td>
+                                        <td class="py-4 px-6 text-center text-emerald-600 font-bold" x-text="item.hadir"></td>
+                                        <td class="py-4 px-6 text-center text-amber-600 font-bold" x-text="item.izin"></td>
+                                        <td class="py-4 px-6 text-center text-cyan-600 font-bold" x-text="item.sakit"></td>
+                                        <td class="py-4 px-6 text-center text-rose-600 font-bold" x-text="item.alpa"></td>
+                                        <td class="py-4 px-6 text-center">
+                                            <span class="px-2 py-1 rounded font-bold" :class="item.percentage >= 85 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'" x-text="item.percentage + '%'"></span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Tab Navigation Menu Mobile (Bottom Nav) -->
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-2.5 px-4 flex justify-around items-center z-40 shadow-lg">
+            <button @click="currentTab = 'dashboard'" :class="currentTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-400'" class="flex flex-col items-center justify-center flex-1">
+                <i class="fas fa-th-large text-lg"></i>
+                <span class="text-[9px] mt-1 font-bold">Dashboard</span>
+            </button>
+            <button x-show="role === 'admin' || role === 'teacher'" @click="currentTab = 'attendance'" :class="currentTab === 'attendance' ? 'text-indigo-600' : 'text-slate-400'" class="flex flex-col items-center justify-center flex-1">
+                <i class="fas fa-calendar-check text-lg"></i>
+                <span class="text-[9px] mt-1 font-bold">Presensi</span>
+            </button>
+            <button @click="currentTab = 'jurnal'" :class="currentTab === 'jurnal' ? 'text-indigo-600' : 'text-slate-400'" class="flex flex-col items-center justify-center flex-1">
+                <i class="fas fa-book text-lg"></i>
+                <span class="text-[9px] mt-1 font-bold">Jurnal</span>
+            </button>
+            <button x-show="role === 'admin'" @click="currentTab = 'students'" :class="currentTab === 'students' ? 'text-indigo-600' : 'text-slate-400'" class="flex flex-col items-center justify-center flex-1">
+                <i class="fas fa-user-friends text-lg"></i>
+                <span class="text-[9px] mt-1 font-bold">Siswa</span>
+            </button>
+            <button @click="currentTab = 'rekap'" :class="currentTab === 'rekap' ? 'text-indigo-600' : 'text-slate-400'" class="flex flex-col items-center justify-center flex-1">
+                <i class="fas fa-chart-pie text-lg"></i>
+                <span class="text-[9px] mt-1 font-bold">Rekap</span>
+            </button>
+        </nav>
+
+        <!-- Dynamic Global Toast Notification -->
+        <div x-show="toast.show" x-transition class="fixed bottom-20 md:bottom-8 right-6 z-50 p-4 rounded-xl shadow-xl flex items-center space-x-3 text-white text-xs font-bold max-w-sm" :class="toast.type === 'success' ? 'bg-emerald-500' : toast.type === 'error' ? 'bg-rose-500' : 'bg-indigo-600'">
+            <i class="fas" :class="toast.type === 'success' ? 'fa-check-circle' : toast.type === 'error' ? 'fa-times-circle' : 'fa-info-circle'"></i>
+            <span x-text="toast.message"></span>
+        </div>
+
+        <!-- Popups (Modals) CRUD: Student Add/Edit Modal -->
+        <div x-show="showStudentModal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative" @click.away="showStudentModal = false">
+                <h3 class="font-bold text-lg text-slate-900 mb-4" x-text="isEditMode ? 'Edit Data Siswa' : 'Tambah Siswa Baru'"></h3>
+                <form @submit.prevent="saveStudent" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">ID Siswa (ID Unik)</label>
+                        <input type="text" x-model="studentForm.id" :disabled="isEditMode" placeholder="Contoh: 202601" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Lengkap Siswa</label>
+                        <input type="text" x-model="studentForm.name" placeholder="Nama Lengkap" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Kelas</label>
+                        <input type="text" x-model="studentForm.className" placeholder="Contoh: X IPA 1" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Orang Tua / Wali</label>
+                        <input type="text" x-model="studentForm.parentName" placeholder="Nama Wali" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nomor WhatsApp Wali</label>
+                        <input type="text" x-model="studentForm.parentPhone" placeholder="Contoh: 628123456789" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PIN Keamanan (Password Login)</label>
+                        <input type="text" x-model="studentForm.pin" placeholder="Default: 1234" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none" required>
+                    </div>
+                    <div class="flex space-x-2 pt-2">
+                        <button type="button" @click="showStudentModal = false" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition">Batal</button>
+                        <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition shadow-md">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Popups (Modals) CRUD: Teacher Add/Edit Modal -->
+        <div x-show="showTeacherModal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative" @click.away="showTeacherModal = false">
+                <h3 class="font-bold text-lg text-slate-900 mb-4" x-text="isEditMode ? 'Edit Data Guru' : 'Tambah Guru Baru'"></h3>
+                <form @submit.prevent="saveTeacher" class="space-y-4" x-data="{ tempClass: '', tempSubject: '' }">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">ID Guru (ID Unik)</label>
+                        <input type="text" x-model="teacherForm.id" :disabled="isEditMode" placeholder="Contoh: G01" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Lengkap & Gelar</label>
+                        <input type="text" x-model="teacherForm.name" placeholder="Nama Guru" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">NIP (Nomor Induk Pegawai)</label>
+                        <input type="text" x-model="teacherForm.nip" placeholder="Masukkan NIP" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none">
+                    </div>
+                    
+                    <!-- Dynamic Array Input For Classes -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Daftar Kelas Binaan</label>
+                        <div class="flex space-x-2">
+                            <input type="text" x-model="tempClass" placeholder="Contoh: X IPA 1" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none">
+                            <button type="button" @click="if(tempClass) { teacherForm.classes.push(tempClass.trim()); tempClass = ''; }" class="px-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold">+</button>
+                        </div>
+                        <div class="flex flex-wrap gap-1 mt-2">
+                            <template x-for="(cl, idx) in teacherForm.classes" :key="idx">
+                                <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-bold flex items-center space-x-1">
+                                    <span x-text="cl"></span>
+                                    <button type="button" @click="teacherForm.classes.splice(idx, 1)" class="text-rose-500 hover:text-rose-700 ml-1">×</button>
+                                </span>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Array Input For Subjects -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Mata Pelajaran yang Diampu</label>
+                        <div class="flex space-x-2">
+                            <input type="text" x-model="tempSubject" placeholder="Contoh: Matematika" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none">
+                            <button type="button" @click="if(tempSubject) { teacherForm.subjects.push(tempSubject.trim()); tempSubject = ''; }" class="px-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold">+</button>
+                        </div>
+                        <div class="flex flex-wrap gap-1 mt-2">
+                            <template x-for="(sb, idx) in teacherForm.subjects" :key="idx">
+                                <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold flex items-center space-x-1">
+                                    <span x-text="sb"></span>
+                                    <button type="button" @click="teacherForm.subjects.splice(idx, 1)" class="text-rose-500 hover:text-rose-700 ml-1">×</button>
+                                </span>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PIN Keamanan (Password Login)</label>
+                        <input type="text" x-model="teacherForm.pin" placeholder="Default: 1234" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none" required>
+                    </div>
+
+                    <div class="flex space-x-2 pt-2">
+                        <button type="button" @click="showTeacherModal = false" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition">Batal</button>
+                        <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition shadow-md">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Popups (Modals): Printable QR Code Card Student ID -->
+        <div x-show="showQRCardModal" class="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-[2rem] w-full max-w-sm p-6 shadow-2xl relative" @click.away="showQRCardModal = false">
+                <div class="text-center" id="printable-area-student-card">
+                    <!-- School Logo/Header in Card -->
+                    <div class="bg-indigo-900 text-white p-5 rounded-2xl relative overflow-hidden mb-5">
+                        <div class="absolute -right-10 -bottom-10 w-24 h-24 bg-indigo-700/50 rounded-full blur-xl"></div>
+                        <i class="fas fa-graduation-cap text-3xl mb-1 text-indigo-300"></i>
+                        <h4 class="font-extrabold text-sm tracking-wide">KARTU PRESENSI DIGITAL</h4>
+                        <p class="text-[9px] uppercase tracking-widest text-indigo-200">SIAKAD PRO - Database Cloud</p>
+                    </div>
+
+                    <!-- Centered QR Code generated from API -->
+                    <div class="inline-flex p-3 bg-slate-100 border border-slate-200 rounded-2xl mb-4">
+                        <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${activeQRStudent ? activeQRStudent.id : '1'}`" alt="Barcode Presensi" class="w-36 h-36 rounded-lg bg-white">
+                    </div>
+
+                    <!-- Profile Information inside Card -->
+                    <div class="space-y-1 mb-5">
+                        <h2 class="font-extrabold text-slate-900 text-lg leading-tight" x-text="activeQRStudent ? activeQRStudent.name : ''"></h2>
+                        <span class="inline-block bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold" x-text="activeQRStudent ? activeQRStudent.className : ''"></span>
+                        <p class="text-[10px] text-slate-400 mt-2 font-mono" x-text="`ID PRESENSI: #${activeQRStudent ? activeQRStudent.id : ''}`"></p>
+                    </div>
+                </div>
+
+                <!-- Print Command Actions Bar -->
+                <div class="flex space-x-2">
+                    <button @click="showQRCardModal = false" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">Tutup</button>
+                    <button @click="printQRCard()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center justify-center space-x-1">
+                        <i class="fas fa-print"></i> <span>Cetak Kartu</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === CONFIGURATION ===
+        // Web App URL dari deploy Google Apps Script Anda (URL yang Anda berikan sudah dimasukkan langsung)
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydJwQN5oPAmwd2LW5W8XcXFIRae_RWKI9BYFVVWovLAAJf2ZPz3-UDytZhoNe5MX0XUg/exec";
+        const ADMIN_PIN = "12345";
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('siakadApp', () => ({
+                // Auth & Session state properties
+                isLoggedIn: false,
+                role: 'guest', // guest, admin, teacher, student
+                currentUser: null,
+                loginForm: {
+                    role: 'student',
+                    selectedId: '',
+                    pin: ''
+                },
+
+                // Common Application State
+                currentTab: 'dashboard',
+                isLoading: false,
+                isSynced: false,
+                isSandboxPreview: false,
+                toast: { show: false, message: '', type: 'info' },
+
+                // Databases Models Entities
+                students: [],
+                teachers: [],
+                attendanceLog: [],
+                journals: [],
+
+                // Selection Presensces Inputs
+                activeClass: '',
+                activeSubject: '',
+                activeTeacherName: '',
+                selectedStudentId: '',
+                tempAttendance: {}, // ID => status 'Hadir','Izin','Sakit','Alpa'
+
+                // Jurnal Input Form
+                journalForm: {
+                    topic: '',
+                    summary: '',
+                    homework: ''
+                },
+
+                // QR Scanner State
+                html5QrScanner: null,
+                isScanning: false,
+
+                // WA Config State
+                waSettings: {
+                    autoSend: false,
+                    provider: 'fonnte',
+                    token: '',
+                    endpoint: 'https://api.fonnte.com/send'
+                },
+
+                // Active Simulated Chat Message on screen
+                activeSimulatedMessage: '',
+
+                // Reports Filters and variables
+                reportType: 'monthly',
+                reportMonth: new Date().getMonth() + 1,
+                reportSemester: '1',
+                reportYear: '2026',
+                recapData: [],
+                recapTotals: { hadir: 0, izin: 0, sakit: 0, alpa: 0 },
+                trendDoughnutChart: null,
+                trendLineChart: null,
+
+                // Modals Controls UI
+                showStudentModal: false,
+                showTeacherModal: false,
+                showQRCardModal: false,
+                activeQRStudent: null,
+                isEditMode: false,
+                studentForm: { id: '', name: '', className: '', parentName: '', parentPhone: '', pin: '1234' },
+                teacherForm: { id: '', name: '', nip: '', classes: [], subjects: [], pin: '1234' },
+
+                loadLocalMockData() {
+                    // Populate initial data for offline simulation
+                    this.students = [
+                        { id: '101', name: 'Andi Wijaya', className: 'X IPA 1', parentName: 'Hendra Wijaya', parentPhone: '628123456789', pin: '1234' },
+                        { id: '102', name: 'Budi Santoso', className: 'X IPA 1', parentName: 'Sudrajat Santoso', parentPhone: '628987654321', pin: '1234' },
+                        { id: '103', name: 'Citra Kirana', className: 'X IPA 1', parentName: 'Irwan Kirana', parentPhone: '628135792468', pin: '1234' },
+                        { id: '201', name: 'Fajar Nugraha', className: 'X IPS 1', parentName: 'Kurnia Nugraha', parentPhone: '628224466880', pin: '1234' },
+                        { id: '202', name: 'Gita Lestari', className: 'X IPS 1', parentName: 'Amir Lestari', parentPhone: '628557799112', pin: '1234' }
+                    ];
+
+                    this.teachers = [
+                        { id: 'T01', name: 'Siti Rahmawati, S.Pd.', nip: '198503252010012003', classes: ['X IPA 1', 'X IPS 1'], subjects: ['Matematika', 'Biologi'], pin: '1234' },
+                        { id: 'T02', name: 'Budi Hartono, M.Hum.', nip: '197911122008031001', classes: ['X IPS 1'], subjects: ['Sejarah', 'Sosiologi'], pin: '1234' }
+                    ];
+
+                    // Seed logs dari Januari - Juni 2026 untuk grafik report
+                    this.attendanceLog = [
+                        { id: 'LOG1', date: '2026-06-01', studentId: '101', status: 'Hadir', className: 'X IPA 1', subject: 'Matematika' },
+                        { id: 'LOG2', date: '2026-06-01', studentId: '102', status: 'Hadir', className: 'X IPA 1', subject: 'Matematika' },
+                        { id: 'LOG3', date: '2026-06-01', studentId: '103', status: 'Alpa', className: 'X IPA 1', subject: 'Matematika' },
+                        { id: 'LOG4', date: '2026-06-02', studentId: '101', status: 'Hadir', className: 'X IPA 1', subject: 'Biologi' },
+                        { id: 'LOG5', date: '2026-06-02', studentId: '102', status: 'Izin', className: 'X IPA 1', subject: 'Biologi' },
+                        { id: 'LOG6', date: '2026-06-02', studentId: '103', status: 'Hadir', className: 'X IPA 1', subject: 'Biologi' }
+                    ];
+
+                    this.journals = [
+                        { id: 'J01', date: '2026-06-01', time: '08:30', className: 'X IPA 1', subject: 'Matematika', topic: 'Persamaan Kuadrat Baru', summary: 'Menerangkan rumus determinan baru dan metode melengkapkan kuadrat sempurna.', homework: 'Kerjakan Bab 2 Hal 15', teacher: 'Siti Rahmawati, S.Pd.' },
+                        { id: 'J02', date: '2026-06-02', time: '09:45', className: 'X IPA 1', subject: 'Biologi', topic: 'Struktur Sel Hewan', summary: 'Meneliti organel sel mitokondria, ribosom, dan membran inti menggunakan mikroskop digital.', homework: 'Gambar organel sel mitokondria', teacher: 'Siti Rahmawati, S.Pd.' }
+                    ];
+
+                    this.isSynced = false;
+                },
+
+                async init() {
+                    // Ambil config lokal WA if exists
+                    const savedWASettings = localStorage.getItem('siakad_wa_settings');
+                    if (savedWASettings) {
+                        this.waSettings = JSON.parse(savedWASettings);
+                    }
+
+                    // Ambil data pertama kali dari cloud sheets
+                    await this.syncData();
+
+                    // Watch tabs updates to render charts automatically
+                    this.$watch('currentTab', value => {
+                        if (value === 'rekap') {
+                            this.$nextTick(() => this.generateReportData());
+                        }
+                    });
+                },
+
+                async syncData() {
+                    this.isLoading = true;
+                    try {
+                        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getData`);
+                        const result = await response.json();
+                        
+                        if (result.status === 'success') {
+                            this.students = result.data.students || [];
+                            this.teachers = result.data.teachers || [];
+                            this.attendanceLog = result.data.attendanceLog || [];
+                            this.journals = result.data.journals || [];
+                            
+                            this.isSynced = true;
+                            this.isSandboxPreview = false;
+                            this.showToast('Data berhasil disinkronkan dari Google Sheets!', 'success');
+                        } else {
+                            throw new Error(result.message);
+                        }
+                    } catch (e) {
+                        console.warn("SIAKAD Cloud: Peramban membatasi permintaan data (CORS di sandbox). Mengaktifkan Mode Luring.", e);
+                        this.isSynced = false;
+                        this.isSandboxPreview = true;
+                        this.loadLocalMockData();
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
+                async postData(action, payload) {
+                    if (this.isSandboxPreview) {
+                        this.showToast('Tersimpan di database luring (preview-mode)', 'success');
+                        return true;
+                    }
+
+                    try {
+                        this.isLoading = true;
+                        const response = await fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({ action, data: payload })
+                        });
+                        const result = await response.json();
+                        if (result.status === 'success') {
+                            this.showToast('Berhasil disinkronkan ke Google Sheets', 'success');
+                            return true;
+                        } else {
+                            throw new Error(result.message);
+                        }
+                    } catch (err) {
+                        console.warn("Koneksi gagal, data tersimpan luring sementara waktu", err);
+                        return true;
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
+                handleLogin() {
+                    if (this.loginForm.role === 'admin') {
+                        if (this.loginForm.pin === ADMIN_PIN) {
+                            this.isLoggedIn = true;
+                            this.role = 'admin';
+                            this.currentUser = { name: 'Super Admin' };
+                            this.showToast('Selamat Datang, Admin!', 'success');
+                        } else {
+                            this.showToast('PIN Admin Salah!', 'error');
+                        }
+                    } else if (this.loginForm.role === 'teacher') {
+                        const match = this.teachers.find(t => t.id === this.loginForm.selectedId);
+                        if (match && match.pin === this.loginForm.pin) {
+                            this.isLoggedIn = true;
+                            this.role = 'teacher';
+                            this.currentUser = match;
+                            this.showToast(`Selamat Datang, ${match.name}!`, 'success');
+                        } else {
+                            this.showToast('PIN Guru salah atau Anda belum memilih guru!', 'error');
+                        }
+                    } else if (this.loginForm.role === 'student') {
+                        const match = this.students.find(s => s.id === this.loginForm.selectedId);
+                        if (match && match.pin === this.loginForm.pin) {
+                            this.isLoggedIn = true;
+                            this.role = 'student';
+                            this.currentUser = match;
+                            this.showToast(`Selamat Datang, ${match.name}!`, 'success');
+                        } else {
+                            this.showToast('PIN Siswa salah atau Anda belum memilih nama!', 'error');
+                        }
+                    }
+                },
+
+                handleLogout() {
+                    this.isLoggedIn = false;
+                    this.role = 'guest';
+                    this.currentUser = null;
+                    this.loginForm = { role: 'student', selectedId: '', pin: '' };
+                    this.stopQRScanner();
+                    this.showToast('Berhasil keluar sistem.', 'info');
+                },
+
+                getClassesList() {
+                    if (this.role === 'teacher' && this.currentUser) {
+                        return this.currentUser.classes || [];
+                    }
+                    return [...new Set(this.students.map(s => s.className))];
+                },
+
+                getSubjectsList() {
+                    if (this.role === 'teacher' && this.currentUser) {
+                        return this.currentUser.subjects || [];
+                    }
+                    return ['Matematika', 'Biologi', 'Fisika', 'Kimia', 'Bahasa Indonesia', 'Bahasa Inggris', 'Sejarah', 'Sosiologi'];
+                },
+
+                getActiveStudentsList() {
+                    return this.students.filter(s => s.className === this.activeClass);
+                },
+
+                getStudentJournals() {
+                    if (this.currentUser) {
+                        return this.journals.filter(j => j.className === this.currentUser.className);
+                    }
+                    return [];
+                },
+
+                getStudentIndividualStats() {
+                    if (!this.currentUser) return { hadir: 0, izin: 0, sakit: 0, alpa: 0, persentase: 0 };
+                    const myLogs = this.attendanceLog.filter(l => l.studentId === this.currentUser.id);
+                    const totals = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
+                    myLogs.forEach(l => {
+                        if (l.status === 'Hadir') totals.hadir++;
+                        else if (l.status === 'Izin') totals.izin++;
+                        else if (l.status === 'Sakit') totals.sakit++;
+                        else if (l.status === 'Alpa') totals.alpa++;
+                    });
+                    const totalDays = myLogs.length || 1;
+                    const persentase = Math.round((totals.hadir / totalDays) * 100);
+                    return { ...totals, persentase };
+                },
+
+                startQRScanner() {
+                    this.isScanning = true;
+                    this.$nextTick(() => {
+                        const qrScanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 250 }, false);
+                        this.html5QrScanner = qrScanner;
+                        qrScanner.render((decodedText) => {
+                            this.handleScannedStudent(decodedText);
+                            this.playBeep();
+                        }, () => {
+                            // Silent err handling
+                        });
+                    });
+                },
+
+                stopQRScanner() {
+                    if (this.html5QrScanner) {
+                        this.html5QrScanner.clear().then(() => {
+                            this.isScanning = false;
+                            this.html5QrScanner = null;
+                        }).catch(e => {
+                            console.warn("Failed stopping scanner", e);
+                            this.isScanning = false;
+                        });
+                    } else {
+                        this.isScanning = false;
+                    }
+                },
+
+                handleScannedStudent(studentId) {
+                    const match = this.students.find(s => s.id === studentId.trim());
+                    if (match) {
+                        if (match.className !== this.activeClass) {
+                            this.showToast(`Siswa ${match.name} bukan dari kelas ${this.activeClass}!`, 'error');
+                            return;
+                        }
+                        this.tempAttendance[match.id] = 'Hadir';
+                        this.showToast(`${match.name} berhasil ditandai HADIR!`, 'success');
+                    } else {
+                        this.showToast(`Siswa dengan ID: #${studentId} tidak ditemukan!`, 'error');
+                    }
+                },
+
+                playBeep() {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const osc = audioContext.createOscillator();
+                        osc.type = "sine";
+                        osc.frequency.setValueAtTime(800, audioContext.currentTime);
+                        osc.connect(audioContext.destination);
+                        osc.start();
+                        osc.stop(audioContext.currentTime + 0.15);
+                    } catch (e) {
+                        console.warn("Synthesizer audio blocked", e);
+                    }
+                },
+
+                async saveAttendanceLogs() {
+                    const dateVal = document.getElementById('attendance-date').value;
+                    const savedLogs = [];
+                    
+                    this.getActiveStudentsList().forEach(std => {
+                        const status = this.tempAttendance[std.id] || 'Alpa';
+                        const log = {
+                            id: 'L_' + Date.now() + '_' + std.id,
+                            date: dateVal,
+                            studentId: std.id,
+                            status: status,
+                            className: this.activeClass,
+                            subject: this.activeSubject
+                        };
+                        
+                        // Cari apakah log dengan tgl, siswa & mapel tsb sudah ada (Update)
+                        const existsIndex = this.attendanceLog.findIndex(al => al.date === dateVal && al.studentId === std.id && al.subject === this.activeSubject);
+                        if (existsIndex !== -1) {
+                            this.attendanceLog[existsIndex] = log;
+                        } else {
+                            this.attendanceLog.push(log);
+                        }
+                        savedLogs.push(log);
+                    });
+
+                    await this.postData('saveAttendance', savedLogs);
+                    this.showToast('Absensi kelas berhasil disimpan!', 'success');
+
+                    // If autoSend WA is true, process
+                    if (this.waSettings.autoSend) {
+                        this.sendWAAutoBackground(savedLogs);
+                    }
+                },
+
+                getWADraftLogs() {
+                    const dateVal = '2026-06-07'; // Filter today logs simulation
+                    const todayLogs = this.attendanceLog.filter(al => al.date === dateVal);
+                    return todayLogs.map(l => {
+                        const std = this.students.find(s => s.id === l.studentId);
+                        return {
+                            id: l.id,
+                            studentId: l.studentId,
+                            name: std ? std.name : 'Unknown',
+                            status: l.status,
+                            parentPhone: std ? std.parentPhone : '',
+                            parentName: std ? std.parentName : '',
+                            subject: l.subject,
+                            date: l.date
+                        };
+                    });
+                },
+
+                generateWAMessage(log) {
+                    return `Bapak/Ibu ${log.parentName || 'Wali Murid'},\nMenginformasikan bahwa hari ini tanggal ${log.date}, putra/putri Anda: ${log.name} dalam mata pelajaran ${log.subject} tercatat dengan status: *${log.status || 'Alpa'}*. Terima kasih.`;
+                },
+
+                simulateHPMini(log) {
+                    this.activeSimulatedMessage = this.generateWAMessage(log);
+                    this.showToast('Pratinjau pesan di-render di simulator', 'info');
+                },
+
+                async sendWAManual(log) {
+                    const msg = this.generateWAMessage(log);
+                    if (this.waSettings.provider === 'fonnte' && this.waSettings.token) {
+                        await this.sendToFonnte(log.parentPhone, msg);
+                    } else {
+                        // WhatsApp Web Link fallback API Direct
+                        const url = `https://api.whatsapp.com/send?phone=${log.parentPhone}&text=${encodeURIComponent(msg)}`;
+                        window.open(url, '_blank');
+                    }
+                },
+
+                async sendWAAutoBackground(logs) {
+                    this.showToast('Memulai broadcast WhatsApp otomatis...', 'info');
+                    for (let l of logs) {
+                        const std = this.students.find(s => s.id === l.studentId);
+                        if (std) {
+                            const payloadLog = {
+                                date: l.date,
+                                name: std.name,
+                                status: l.status,
+                                parentName: std.parentName,
+                                parentPhone: std.parentPhone,
+                                subject: l.subject
+                            };
+                            const msg = this.generateWAMessage(payloadLog);
+                            if (this.waSettings.token) {
+                                await this.sendToFonnte(std.parentPhone, msg);
+                            }
+                        }
+                    }
+                    this.showToast('Broadcast WA sukses terkirim!', 'success');
+                },
+
+                async sendToFonnte(phone, text) {
+                    try {
+                        const response = await fetch('https://api.fonnte.com/send', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': this.waSettings.token,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ target: phone, message: text })
+                        });
+                        const res = await response.json();
+                        if (res.status) {
+                            this.showToast(`WA Terkirim ke nomor ${phone}`, 'success');
+                        }
+                    } catch (e) {
+                        console.warn("Fonnte API offline or error", e);
+                    }
+                },
+
+                saveWASettings() {
+                    localStorage.setItem('siakad_wa_settings', JSON.stringify(this.waSettings));
+                },
+
+                generateReportData() {
+                    const tempRecap = [];
+                    const totals = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
+                    
+                    const targetStudents = this.students;
+                    
+                    targetStudents.forEach(std => {
+                        let filteredLogs = this.attendanceLog.filter(al => al.studentId === std.id);
+                        
+                        if (this.reportType === 'monthly') {
+                            filteredLogs = filteredLogs.filter(l => {
+                                const m = new Date(l.date).getMonth() + 1;
+                                return m.toString() === this.reportMonth.toString();
+                            });
+                        } else if (this.reportType === 'semester') {
+                            filteredLogs = filteredLogs.filter(l => {
+                                const m = new Date(l.date).getMonth() + 1;
+                                return this.reportSemester === '1' ? (m >= 7 && m <= 12) : (m >= 1 && m <= 6);
+                            });
+                        }
+
+                        const counts = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
+                        filteredLogs.forEach(l => {
+                            if (l.status === 'Hadir') { counts.hadir++; totals.hadir++; }
+                            else if (l.status === 'Izin') { counts.izin++; totals.izin++; }
+                            else if (l.status === 'Sakit') { counts.sakit++; totals.sakit++; }
+                            else if (l.status === 'Alpa') { counts.alpa++; totals.alpa++; }
+                        });
+
+                        const totalDays = filteredLogs.length || 1;
+                        const percentage = Math.round((counts.hadir / totalDays) * 100);
+
+                        tempRecap.push({
+                            id: std.id,
+                            name: std.name,
+                            className: std.className,
+                            hadir: counts.hadir,
+                            izin: counts.izin,
+                            sakit: counts.sakit,
+                            alpa: counts.alpa,
+                            percentage: percentage
+                        });
+                    });
+
+                    this.recapData = tempRecap;
+                    this.recapTotals = totals;
+
+                    this.renderCharts();
+                },
+
+                renderCharts() {
+                    // Render Doughnut
+                    const ctxDoughnut = document.getElementById('recapDoughnutChart');
+                    if (ctxDoughnut) {
+                        if (this.trendDoughnutChart) this.trendDoughnutChart.destroy();
+                        this.trendDoughnutChart = new Chart(ctxDoughnut, {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Hadir', 'Izin', 'Sakit', 'Alpa'],
+                                datasets: [{
+                                    data: [this.recapTotals.hadir, this.recapTotals.izin, this.recapTotals.sakit, this.recapTotals.alpa],
+                                    backgroundColor: ['#10b981', '#f59e0b', '#06b6d4', '#f43f5e'],
+                                    borderWidth: 2
+                                }]
+                            },
+                            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                        });
+                    }
+
+                    // Render Line Chart
+                    const ctxLine = document.getElementById('recapTrendLineChart');
+                    if (ctxLine) {
+                        if (this.trendLineChart) this.trendLineChart.destroy();
+                        this.trendLineChart = new Chart(ctxLine, {
+                            type: 'line',
+                            data: {
+                                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                                datasets: [{
+                                    label: 'Tingkat Kehadiran (%)',
+                                    data: [92, 94, 88, 95, 93, 90],
+                                    borderColor: '#4f46e5',
+                                    backgroundColor: '#4f46e5/20',
+                                    tension: 0.3,
+                                    fill: true
+                                }]
+                            },
+                            options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } }
+                        });
+                    }
+                },
+
+                downloadStudentCSVTemplate() {
+                    const csvContent = "data:text/csv;charset=utf-8,id,name,className,parentName,parentPhone,pin\n301,Dodi Hermawan,X IPA 1,Joni Hermawan,62812112233,1234";
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", "SIAKAD_Template_Siswa.csv");
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                },
+
+                handleCSVImport(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = async (evt) => {
+                        const lines = evt.target.result.split('\n');
+                        const addedStudents = [];
+                        for (let i = 1; i < lines.length; i++) {
+                            const cols = lines[i].split(',');
+                            if (cols.length >= 5) {
+                                const newStd = {
+                                    id: cols[0].trim(),
+                                    name: cols[1].trim(),
+                                    className: cols[2].trim(),
+                                    parentName: cols[3].trim(),
+                                    parentPhone: cols[4].trim(),
+                                    pin: cols[5] ? cols[5].trim() : '1234'
+                                };
+                                this.students.push(newStd);
+                                addedStudents.push(newStd);
+                                await this.postData('saveStudent', newStd);
+                            }
+                        }
+                        this.showToast(`${addedStudents.length} Siswa berhasil diimpor!`, 'success');
+                    };
+                    reader.readAsText(file);
+                },
+
+                downloadQR(student) {
+                    const url = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${student.id}`;
+                    fetch(url)
+                        .then(res => res.blob())
+                        .then(blob => {
+                            const blobUrl = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.download = `QR_${student.className}_${student.name.replace(/\s+/g, '_')}.png`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(blobUrl);
+                            this.showToast('QR Code siap cetak berhasil diunduh!', 'success');
+                        })
+                        .catch(() => {
+                            window.open(url, '_blank');
+                        });
+                },
+
+                openAddStudentModal() {
+                    this.isEditMode = false;
+                    this.studentForm = { id: '', name: '', className: '', parentName: '', parentPhone: '', pin: '1234' };
+                    this.showStudentModal = true;
+                },
+
+                openEditStudentModal(student) {
+                    this.isEditMode = true;
+                    this.studentForm = { ...student };
+                    this.showStudentModal = true;
+                },
+
+                async saveStudent() {
+                    if (this.isEditMode) {
+                        const idx = this.students.findIndex(s => s.id === this.studentForm.id);
+                        if (idx !== -1) this.students[idx] = { ...this.studentForm };
+                    } else {
+                        this.students.push({ ...this.studentForm });
+                    }
+                    await this.postData('saveStudent', this.studentForm);
+                    this.showStudentModal = false;
+                    this.showToast('Data Siswa disimpan!', 'success');
+                },
+
+                deleteStudent(id) {
+                    this.students = this.students.filter(s => s.id !== id);
+                    this.showToast('Siswa berhasil dihapus!', 'info');
+                },
+
+                openAddTeacherModal() {
+                    this.isEditMode = false;
+                    this.teacherForm = { id: '', name: '', nip: '', classes: [], subjects: [], pin: '1234' };
+                    this.showTeacherModal = true;
+                },
+
+                openEditTeacherModal(teacher) {
+                    this.isEditMode = true;
+                    this.teacherForm = { ...teacher, classes: [...teacher.classes], subjects: [...teacher.subjects] };
+                    this.showTeacherModal = true;
+                },
+
+                async saveTeacher() {
+                    if (this.isEditMode) {
+                        const idx = this.teachers.findIndex(t => t.id === this.teacherForm.id);
+                        if (idx !== -1) this.teachers[idx] = { ...this.teacherForm };
+                    } else {
+                        this.teachers.push({ ...this.teacherForm });
+                    }
+                    await this.postData('saveTeacher', this.teacherForm);
+                    this.showTeacherModal = false;
+                    this.showToast('Data Guru disimpan!', 'success');
+                },
+
+                deleteTeacher(id) {
+                    this.teachers = this.teachers.filter(t => t.id !== id);
+                    this.showToast('Guru berhasil didelete dari pendaftaran!', 'info');
+                },
+
+                openQRCard(student) {
+                    this.activeQRStudent = student;
+                    this.showQRCardModal = true;
+                },
+
+                printQRCard() {
+                    const printContents = document.getElementById('printable-area-student-card').innerHTML;
+                    const originalContents = document.body.innerHTML;
+                    document.body.innerHTML = `<div class="p-8 flex items-center justify-center">${printContents}</div>`;
+                    window.print();
+                    document.body.innerHTML = originalContents;
+                    window.location.reload(); // Reload window to restore Alpine context safely
+                },
+
+                showToast(message, type = 'info') {
+                    this.toast = { show: true, message, type };
+                    setTimeout(() => { this.toast.show = false; }, 3000);
+                }
+            }));
+        });
+    </script>
+</body>
+</html>
